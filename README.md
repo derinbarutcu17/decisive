@@ -6,7 +6,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/images/decision-loop.svg" alt="Decisive local-first decision loop" width="100%" />
+  <img src="docs/images/decisive-matrix-hero.png" alt="Minimal four-quadrant Decisive matrix graphic" width="100%" />
 </p>
 
 ## The interface
