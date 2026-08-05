@@ -1,0 +1,41 @@
+{
+  "name": "decisive",
+  "version": "1.0.0",
+  "description": "Local-first decision matrix for macOS",
+  "main": "main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/api.test.mjs",
+    "app": "electron .",
+    "capture:readme": "electron scripts/capture-readme-shots.cjs",
+    "dist": "electron-builder --mac dir"
+  },
+  "build": {
+    "appId": "com.derin.eisenhower",
+    "productName": "Decisive",
+    "asar": false,
+    "files": [
+      "main.cjs",
+      "server.js",
+      "index.html",
+      "style.css",
+      "app.js",
+      "ascii-background.js",
+      "vendor/asciify-engine.js",
+      "decisive-mark.png",
+      "fonts/Inter-Variable.ttf"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.10.3",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "asciify-engine": "^1.0.118"
+  }
+}

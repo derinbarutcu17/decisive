@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decisive</title>
+<script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="phone-shell">
+<div id="console" data-app="decisive">
+<header class="app-identity" aria-label="Decisive">
+  <img class="app-mark" src="decisive-mark.png?v=3" alt="">
+  <span class="app-name">Decisive</span>
+</header>
+<section class="capture-panel" aria-label="Task capture">
+  <div class="capture-control">
+    <input id="quick-add" type="text" placeholder="Type a task and press Enter…" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" inputmode="text" aria-label="Add a task">
+    <span class="enter-key">Enter <svg class="enter-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Do</span>
+  </div>
+</section>
+<div id="layout">
+<aside class="quadrant done-section" id="done">
+  <h2><span class="dot"></span><span class="quadrant-name">Done</span><small>archive / completed</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+  <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+</aside>
+<main id="matrix" aria-label="Task matrix">
+  <section class="quadrant" data-quadrant="do">
+    <h2><span class="dot"></span><span class="quadrant-name">Do</span><small>urgent + important</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+    <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+  </section>
+  <section class="quadrant" data-quadrant="schedule">
+    <h2><span class="dot"></span><span class="quadrant-name">Schedule</span><small>important, not urgent</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+    <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+  </section>
+  <section class="quadrant" data-quadrant="delegate">
+    <h2><span class="dot"></span><span class="quadrant-name">Delegate</span><small>urgent, not important</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+    <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+  </section>
+  <section class="quadrant" data-quadrant="eliminate">
+    <h2><span class="dot"></span><span class="quadrant-name">Eliminate</span><small>neither</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+    <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+  </section>
+</main>
+</div>
+</div>
+</div>
+<script type="module" src="ascii-background.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

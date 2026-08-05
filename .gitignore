@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Local task history is private. Use examples/demo-data.json for screenshots.
+data.json
+design-qa.md
+
+# Local build/recovery output
+artifacts/
+*.app/
+logo.png
+decisive-mark-transparent.png
+fonts/Lato-*.ttf
+fonts/PTSerif-*.ttf

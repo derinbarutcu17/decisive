@@ -1,0 +1,56 @@
+[
+  {
+    "id": "demo-do-001",
+    "title": "Ship the first release",
+    "note": "Cut scope to the core decision loop.",
+    "quadrant": "do",
+    "order": 0,
+    "done": false,
+    "doneAt": null
+  },
+  {
+    "id": "demo-schedule-001",
+    "title": "Draft launch notes",
+    "note": "Share the changelog after QA.",
+    "quadrant": "schedule",
+    "order": 0,
+    "done": false,
+    "doneAt": null
+  },
+  {
+    "id": "demo-schedule-002",
+    "title": "Book a 90-minute focus block",
+    "note": "Protect the work before the calendar fills.",
+    "quadrant": "schedule",
+    "order": 1,
+    "done": false,
+    "doneAt": null
+  },
+  {
+    "id": "demo-delegate-001",
+    "title": "Ask for copy review",
+    "note": "Route the final pass to a teammate.",
+    "quadrant": "delegate",
+    "order": 0,
+    "done": false,
+    "doneAt": null
+  },
+  {
+    "id": "demo-eliminate-001",
+    "title": "Archive stale experiments",
+    "note": "Keep the active board decision-ready.",
+    "quadrant": "eliminate",
+    "order": 0,
+    "done": false,
+    "doneAt": null
+  },
+  {
+    "id": "demo-done-001",
+    "title": "Define the decision rules",
+    "note": "The matrix is only useful when the rules are clear.",
+    "quadrant": "do",
+    "order": 1,
+    "done": true,
+    "doneAt": "2026-08-04T09:00:00.000Z"
+  }
+]
