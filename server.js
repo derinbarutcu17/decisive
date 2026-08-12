@@ -9,13 +9,41 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 const PORT = process.env.PORT || 4321;
 const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'];
+const SNAP_POINTS = Array.from({ length: 21 }, (_, index) => index * 5);
+const DEFAULT_WEIGHTS = {
+  do: { importance: 75, urgency: 75 },
+  schedule: { importance: 75, urgency: 25 },
+  delegate: { importance: 25, urgency: 75 },
+  eliminate: { importance: 25, urgency: 25 },
+};
 
 let tasks = [];
+
+function weight(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const clamped = Math.max(0, Math.min(100, n));
+  return SNAP_POINTS.reduce((closest, point) => Math.abs(point - clamped) < Math.abs(closest - clamped) ? point : closest, SNAP_POINTS[0]);
+}
+
+function applyDefaultWeights(task) {
+  const defaults = DEFAULT_WEIGHTS[task.quadrant] || DEFAULT_WEIGHTS.do;
+  task.importance = weight(task.importance, defaults.importance);
+  task.urgency = weight(task.urgency, defaults.urgency);
+  return task;
+}
 
 async function load() {
   try {
     tasks = JSON.parse(await readFile(DATA_FILE, 'utf8'));
     if (!Array.isArray(tasks)) throw new Error('data file must contain an array');
+    let changed = false;
+    tasks.forEach(task => {
+      const before = String(task.importance) + ':' + String(task.urgency);
+      applyDefaultWeights(task);
+      changed ||= before !== String(task.importance) + ':' + String(task.urgency);
+    });
+    if (changed) await save();
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
     tasks = [];
@@ -45,7 +73,8 @@ const server = http.createServer(async (req, res) => {
 
       if (url.pathname === '/api/tasks' && req.method === 'POST') {
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
-        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q).length, done: false, doneAt: null };
+        const defaults = DEFAULT_WEIGHTS[q];
+        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q).length, done: false, doneAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
         tasks.push(t); await save(); return json(201, t);
       }
 
@@ -56,6 +85,10 @@ const server = http.createServer(async (req, res) => {
         if (req.method === 'PATCH') {
           if ('title' in body) t.title = String(body.title);
           if ('note' in body) t.note = String(body.note);
+          if ('quadrant' in body && !QUADRANTS.includes(body.quadrant)) return json(400, { error: 'invalid quadrant' });
+          const defaults = DEFAULT_WEIGHTS[t.quadrant] || DEFAULT_WEIGHTS.do;
+          if ('importance' in body) t.importance = weight(body.importance, defaults.importance);
+          if ('urgency' in body) t.urgency = weight(body.urgency, defaults.urgency);
           if ('done' in body) { t.done = !!body.done; t.doneAt = t.done ? new Date().toISOString() : null; }
           const moving = 'quadrant' in body && body.quadrant !== t.quadrant;
           if (moving || 'order' in body) {
@@ -63,6 +96,7 @@ const server = http.createServer(async (req, res) => {
               const old = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
               old.forEach((x, i) => x.order = i);
               t.quadrant = QUADRANTS.includes(body.quadrant) ? body.quadrant : t.quadrant;
+              if (!('importance' in body) && !('urgency' in body)) applyDefaultWeights(t);
             }
             const same = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
             const idx = Math.min(Number(body.order ?? same.length), same.length);

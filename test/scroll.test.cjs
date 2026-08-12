@@ -19,6 +19,7 @@ app.whenReady().then(async () => {
       list.dispatchEvent(new Event('scroll'));
       const lowerQuadrant = document.querySelector('[data-quadrant="delegate"]');
       const styles = getComputedStyle(list);
+      const doneFrameStyles = getComputedStyle(document.querySelector('#done .cards-frame'));
       const frame = list.closest('.cards-frame');
       const fade = frame.querySelector('.cards-fade');
       const fadeStyles = getComputedStyle(fade);
@@ -40,6 +41,7 @@ app.whenReady().then(async () => {
         fadeUsesMask: /gradient/i.test(fadeStyles.webkitMaskImage || fadeStyles.maskImage || ''),
         fadeUsesBlur: fadeStyles.backdropFilter !== 'none' || fadeStyles.webkitBackdropFilter !== 'none',
         fadeOutsideScrollList: fade.parentElement === frame,
+        doneFrameCanUsePanelHeight: doneFrameStyles.flexGrow === '1' && doneFrameStyles.maxHeight === 'none',
         rowsStaySeparated: lowerRect.top >= quadrantRect.bottom - 1,
       };
     })()`);
@@ -52,6 +54,7 @@ app.whenReady().then(async () => {
       ['bottom fade uses a gradient mask', result.fadeUsesMask],
       ['bottom fade uses a blur layer', result.fadeUsesBlur],
       ['bottom fade sits outside the scrolling list', result.fadeOutsideScrollList],
+      ['done list can use the full panel height', result.doneFrameCanUsePanelHeight],
       ['matrix rows stay separated', result.rowsStaySeparated],
     ];
     const failed = checks.filter(([, passed]) => !passed);

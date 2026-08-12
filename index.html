@@ -11,8 +11,17 @@
 <div id="phone-shell">
 <div id="console" data-app="decisive">
 <header class="app-identity" aria-label="Decisive">
-  <img class="app-mark" src="decisive-mark.png?v=3" alt="">
-  <span class="app-name">Decisive</span>
+  <div class="app-brand">
+    <img class="app-mark" src="decisive-mark.png?v=3" alt="">
+    <span class="app-name">Decisive</span>
+  </div>
+  <div class="header-actions">
+    <div class="view-switch" role="group" aria-label="Board view">
+      <button type="button" class="view-button is-active" data-view="matrix" aria-pressed="true">Matrix</button>
+      <button type="button" class="view-button" data-view="scatter" aria-pressed="false">Scatter</button>
+    </div>
+    <button type="button" class="names-toggle" id="task-names-toggle" aria-pressed="false" hidden>Show names</button>
+  </div>
 </header>
 <section class="capture-panel" aria-label="Task capture">
   <div class="capture-control">
@@ -43,6 +52,34 @@
     <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
   </section>
 </main>
+<section id="scatter-view" class="scatter-view" aria-label="Scatter plot view" hidden>
+  <div class="scatter-layout">
+    <div class="scatter-chart-shell">
+      <div class="scatter-axis scatter-axis-y" aria-hidden="true">
+        <span>Important</span>
+        <strong>Importance</strong>
+        <span>Not important</span>
+      </div>
+      <div class="scatter-plot" id="scatter-plot" role="region" aria-label="Task scatter plot" aria-describedby="scatter-description">
+        <p id="scatter-description" class="sr-only">Importance increases from bottom to top and urgency increases from right to left. Do is the top-left quadrant, Schedule is top-right, Delegate is bottom-left, and Eliminate is bottom-right. Tasks can only be placed on the visible grid intersections.</p>
+        <div class="scatter-zones">
+          <div class="scatter-zone zone-delegate" role="group" aria-label="Delegate: low importance, high urgency"></div>
+          <div class="scatter-zone zone-do" role="group" aria-label="Do: high importance, high urgency"></div>
+          <div class="scatter-zone zone-eliminate" role="group" aria-label="Eliminate: low importance, low urgency"></div>
+          <div class="scatter-zone zone-schedule" role="group" aria-label="Schedule: high importance, low urgency"></div>
+        </div>
+        <div class="scatter-grid" id="scatter-grid" aria-hidden="true"></div>
+        <div class="scatter-tasks" id="scatter-tasks" role="list" aria-label="Active tasks on the scatter plot"></div>
+        <p class="scatter-empty" id="scatter-empty" hidden>No active tasks yet.</p>
+      </div>
+      <div class="scatter-axis scatter-axis-x" aria-hidden="true">
+        <span>Urgent</span>
+        <strong>Urgency</strong>
+        <span>Not urgent</span>
+      </div>
+    </div>
+  </div>
+</section>
 </div>
 </div>
 </div>
