@@ -14,8 +14,14 @@ let currentView = 'matrix';
 let selectedScatterId = null;
 let scatterDrag = null;
 let scatterNamesVisible = false;
+let scatterLabelLayoutFrame = 0;
+let scatterLabelCommitFrame = 0;
+let scatterLabelLayoutSequence = 0;
 const scatterDrafts = new Map();
 const scatterPersistence = new Map();
+const scatterLabelPositions = new Map();
+let scatterLabelPendingCommit = null;
+const scatterDotMotions = new WeakMap();
 let scatterPersistSequence = 0;
 
 try {
@@ -74,12 +80,73 @@ function gridIndex(value) {
 
 function updateCounts() {
   for (const q of quadrants()) q.querySelector('.count').textContent = cardsFor(q.dataset.quadrant).length;
-  $('#done .count').textContent = doneItems().length;
+  const doneCount = doneItems().length;
+  $('#done .count').textContent = doneCount;
+  updateDoneDeleteControl(doneCount);
 }
 
-function setScatterDotPosition(dot, importance, urgency) {
-  dot.style.setProperty('--scatter-x', `${100 - urgency}%`);
-  dot.style.setProperty('--scatter-y', `${100 - importance}%`);
+function updateDoneDeleteControl(doneCount = doneItems().length) {
+  const deleteButton = $('#done-delete');
+  const deleteActions = $('#done-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  if (!doneCount) {
+    deleteButton.hidden = true;
+    deleteActions.hidden = true;
+    return;
+  }
+  if (deleteActions.hidden) deleteButton.hidden = false;
+}
+
+function writeScatterDotPosition(dot, x, y) {
+  dot.style.setProperty('--scatter-x', `${x}%`);
+  dot.style.setProperty('--scatter-y', `${y}%`);
+  dot.dataset.scatterX = String(x);
+  dot.dataset.scatterY = String(y);
+}
+
+function animateScatterDotPosition(dot, x, y) {
+  const existing = scatterDotMotions.get(dot);
+  if (existing?.raf) {
+    existing.targetX = x;
+    existing.targetY = y;
+    return;
+  }
+  const fromX = Number.isFinite(existing?.currentX) ? existing.currentX : Number.parseFloat(dot.dataset.scatterX || x);
+  const fromY = Number.isFinite(existing?.currentY) ? existing.currentY : Number.parseFloat(dot.dataset.scatterY || y);
+  if (Math.abs(fromX - x) < .01 && Math.abs(fromY - y) < .01) {
+    writeScatterDotPosition(dot, x, y);
+    scatterDotMotions.set(dot, { currentX: x, currentY: y, targetX: x, targetY: y, raf: 0 });
+    return;
+  }
+  const state = { currentX: fromX, currentY: fromY, targetX: x, targetY: y, raf: 0 };
+  scatterDotMotions.set(dot, state);
+  const tick = () => {
+    const follow = dot.classList.contains('is-dragging') ? .32 : .22;
+    state.currentX += (state.targetX - state.currentX) * follow;
+    state.currentY += (state.targetY - state.currentY) * follow;
+    writeScatterDotPosition(dot, state.currentX, state.currentY);
+    if (Math.abs(state.targetX - state.currentX) > .02 || Math.abs(state.targetY - state.currentY) > .02) {
+      state.raf = requestAnimationFrame(tick);
+    } else {
+      state.currentX = state.targetX;
+      state.currentY = state.targetY;
+      writeScatterDotPosition(dot, state.currentX, state.currentY);
+      state.raf = 0;
+    }
+  };
+  state.raf = requestAnimationFrame(tick);
+}
+
+function setScatterDotPosition(dot, importance, urgency, { animate = false } = {}) {
+  const x = 100 - urgency;
+  const y = 100 - importance;
+  if (animate && dot.isConnected) animateScatterDotPosition(dot, x, y);
+  else {
+    const existing = scatterDotMotions.get(dot);
+    if (existing?.raf) cancelAnimationFrame(existing.raf);
+    writeScatterDotPosition(dot, x, y);
+    scatterDotMotions.set(dot, { currentX: x, currentY: y, targetX: x, targetY: y, raf: 0 });
+  }
   dot.dataset.importance = String(importance);
   dot.dataset.urgency = String(urgency);
   dot.dataset.tooltipPlacement = scatterTooltipPlacement({ importance, urgency });
@@ -90,8 +157,10 @@ function selectScatterTask(id) {
   document.querySelectorAll('.scatter-task').forEach(dot => {
     const selected = dot.dataset.id === selectedScatterId;
     dot.classList.toggle('is-selected', selected);
+    dot.classList.toggle('is-frontmost', selected);
     dot.setAttribute('aria-selected', String(selected));
   });
+  scheduleScatterLabelLayout();
 }
 
 function scatterDotLabel(task, position) {
@@ -102,6 +171,205 @@ function scatterTooltipPlacement(position) {
   const vertical = position.importance >= 50 ? 'below' : 'above';
   const horizontal = position.urgency >= 75 ? 'right' : position.urgency <= 25 ? 'left' : 'center';
   return vertical + '-' + horizontal;
+}
+
+const SCATTER_LABEL_GAP = 5;
+const SCATTER_LABEL_ANCHOR = 10;
+const SCATTER_LABEL_INSET = 6;
+const SCATTER_LABEL_CANDIDATES = [
+  'below-center', 'above-center', 'below-left', 'below-right', 'above-left', 'above-right',
+  'left-center', 'right-center',
+];
+
+function labelIsVisible(dot) {
+  return scatterNamesVisible
+    || dot.matches(':hover')
+    || dot.matches(':focus-visible')
+    || dot.classList.contains('is-dragging');
+}
+
+function labelCandidatePosition(dotRect, labelWidth, labelHeight, placement) {
+  const centerX = dotRect.left + dotRect.width / 2;
+  const centerY = dotRect.top + dotRect.height / 2;
+  const positions = {
+    'below-center': { left: centerX - labelWidth / 2, top: dotRect.bottom + SCATTER_LABEL_GAP },
+    'above-center': { left: centerX - labelWidth / 2, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
+    'below-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_GAP },
+    'below-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_GAP },
+    'above-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
+    'above-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
+    'left-center': { left: dotRect.left - labelWidth - SCATTER_LABEL_GAP, top: centerY - labelHeight / 2 },
+    'right-center': { left: dotRect.right + SCATTER_LABEL_GAP, top: centerY - labelHeight / 2 },
+  };
+  return positions[placement] || positions['below-center'];
+}
+
+function scatterLabelWidth(dot) {
+  const titleLength = dot.querySelector('.scatter-task-label')?.textContent.length || 0;
+  return Math.max(140, Math.min(260, titleLength * 7.1 + 24));
+}
+
+function labelOverflow(rect, bounds, inset = 0) {
+  return Math.max(0, bounds.left + inset - rect.left)
+    + Math.max(0, rect.right - bounds.right + inset)
+    + Math.max(0, bounds.top + inset - rect.top)
+    + Math.max(0, rect.bottom - bounds.bottom + inset);
+}
+
+function scatterLabelRailPositions(plotRect, labelWidth, labelHeight) {
+  const columns = Math.max(1, Math.floor((plotRect.width - SCATTER_LABEL_INSET * 2 + SCATTER_LABEL_GAP) / (labelWidth + SCATTER_LABEL_GAP)));
+  const rowHeight = labelHeight + SCATTER_LABEL_GAP;
+  const positions = [];
+  for (let row = 0; row < 12; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      positions.push({
+        left: plotRect.left + SCATTER_LABEL_INSET + column * (labelWidth + SCATTER_LABEL_GAP),
+        top: plotRect.top + SCATTER_LABEL_INSET + row * rowHeight,
+      });
+    }
+  }
+  return positions;
+}
+
+function labelRectsOverlap(a, b, gap = 6) {
+  return !(
+    a.right + gap <= b.left
+    || a.left >= b.right + gap
+    || a.bottom + gap <= b.top
+    || a.top >= b.bottom + gap
+  );
+}
+
+function measuredLabelRect(position, labelWidth, labelHeight, plotRect) {
+  return {
+    left: position.left,
+    top: position.top,
+    right: position.left + labelWidth,
+    bottom: position.top + labelHeight,
+    width: labelWidth,
+    height: labelHeight,
+    inside: position.left >= plotRect.left + SCATTER_LABEL_INSET
+      && position.left + labelWidth <= plotRect.right - SCATTER_LABEL_INSET
+      && position.top >= plotRect.top + SCATTER_LABEL_INSET
+      && position.top + labelHeight <= plotRect.bottom - SCATTER_LABEL_INSET,
+  };
+}
+
+function clearMeasuredLabelPosition(label) {
+  label.classList.remove('is-positioned');
+  label.style.removeProperty('--scatter-label-left');
+  label.style.removeProperty('--scatter-label-top');
+}
+
+function layoutScatterLabels() {
+  const plot = $('#scatter-plot');
+  const container = $('#scatter-tasks');
+  if (!plot || !container) return;
+  const layoutSequence = ++scatterLabelLayoutSequence;
+  const plotRect = plot.getBoundingClientRect();
+  const dots = [...container.querySelectorAll('.scatter-task')];
+  const domOrder = new Map(dots.map((dot, index) => [dot, index]));
+  const visibleDots = dots.filter(labelIsVisible).sort((a, b) => {
+    const aFront = a.classList.contains('is-frontmost') ? 0 : 1;
+    const bFront = b.classList.contains('is-frontmost') ? 0 : 1;
+    return aFront - bFront || domOrder.get(a) - domOrder.get(b);
+  });
+  const placed = [];
+  const commits = [];
+  for (const dot of dots) {
+    const label = dot.querySelector('.scatter-task-label');
+    if (label && !labelIsVisible(dot)) clearMeasuredLabelPosition(label);
+  }
+  for (const dot of visibleDots) {
+    const label = dot.querySelector('.scatter-task-label');
+    if (!label) continue;
+    const taskKey = dot.dataset.id;
+    const dotRect = dot.getBoundingClientRect();
+    const previousOffset = scatterLabelPositions.get(taskKey);
+    label.classList.add('is-measuring');
+    label.style.setProperty('visibility', 'hidden');
+    const labelWidth = scatterLabelWidth(dot);
+    label.style.width = `${labelWidth}px`;
+    label.style.maxWidth = `${labelWidth}px`;
+    const labelHeight = label.offsetHeight;
+    const preferred = dot.dataset.tooltipPlacement;
+    const previousPlacement = previousOffset?.placement;
+    const candidates = [previousPlacement, preferred, ...SCATTER_LABEL_CANDIDATES]
+      .filter((placement, index, list) => placement && list.indexOf(placement) === index);
+    let best = null;
+    for (const placement of candidates) {
+      const position = labelCandidatePosition(dotRect, labelWidth, labelHeight, placement);
+      const measured = measuredLabelRect(position, labelWidth, labelHeight, plotRect);
+      const collisions = placed.filter(previous => labelRectsOverlap(measured, previous)).length;
+      const score = collisions * 1000 + labelOverflow(measured, plotRect, SCATTER_LABEL_INSET);
+      if (!best || score < best.score) best = { measured, score, placement, left: position.left, top: position.top };
+      if (score === 0) break;
+    }
+    if (!best || best.score >= 1000) {
+      for (const position of scatterLabelRailPositions(plotRect, labelWidth, labelHeight)) {
+        const measured = measuredLabelRect(position, labelWidth, labelHeight, plotRect);
+        const collision = placed.some(previous => labelRectsOverlap(measured, previous));
+        if (measured.inside && !collision) {
+          best = { measured, score: 0, placement: previousPlacement || preferred, left: position.left, top: position.top };
+          break;
+        }
+      }
+    }
+    if (!best) {
+      const dotRect = dot.getBoundingClientRect();
+      const fallback = {
+        left: Math.max(plotRect.left + SCATTER_LABEL_INSET, Math.min(dotRect.left, plotRect.right - labelWidth - SCATTER_LABEL_INSET)),
+        top: Math.max(plotRect.top + SCATTER_LABEL_INSET, Math.min(dotRect.bottom + SCATTER_LABEL_GAP, plotRect.bottom - labelHeight - SCATTER_LABEL_INSET)),
+      };
+      best = { score: 2000, placement: previousPlacement || preferred, left: fallback.left, top: fallback.top };
+    }
+    commits.push({
+      dot,
+      label,
+      taskKey,
+      previousOffset,
+      nextLeft: best.left - dotRect.left,
+      nextTop: best.top - dotRect.top,
+      placement: best.placement,
+      rect: best.measured,
+    });
+    placed.push(best.measured);
+  }
+  for (const commit of commits) {
+    if (commit.previousOffset) {
+      commit.label.classList.add('is-positioned');
+      commit.label.style.setProperty('--scatter-label-left', `${commit.previousOffset.left}px`);
+      commit.label.style.setProperty('--scatter-label-top', `${commit.previousOffset.top}px`);
+    } else {
+      commit.label.classList.add('is-positioned');
+      commit.label.style.setProperty('--scatter-label-left', `${commit.nextLeft}px`);
+      commit.label.style.setProperty('--scatter-label-top', `${commit.nextTop}px`);
+    }
+    commit.label.classList.remove('is-measuring');
+    commit.label.style.removeProperty('visibility');
+  }
+  scatterLabelPendingCommit = { sequence: layoutSequence, commits };
+  if (!scatterLabelCommitFrame) scatterLabelCommitFrame = requestAnimationFrame(() => {
+    scatterLabelCommitFrame = 0;
+    const pending = scatterLabelPendingCommit;
+    scatterLabelPendingCommit = null;
+    if (!pending || pending.sequence !== scatterLabelLayoutSequence) return;
+    for (const commit of pending.commits) {
+      if (!document.contains(commit.label)) continue;
+      commit.label.classList.add('is-positioned');
+      commit.label.style.setProperty('--scatter-label-left', `${commit.nextLeft}px`);
+      commit.label.style.setProperty('--scatter-label-top', `${commit.nextTop}px`);
+      scatterLabelPositions.set(commit.taskKey, { left: commit.nextLeft, top: commit.nextTop, placement: commit.placement });
+    }
+  });
+}
+
+function scheduleScatterLabelLayout() {
+  if (scatterLabelLayoutFrame) cancelAnimationFrame(scatterLabelLayoutFrame);
+  scatterLabelLayoutFrame = requestAnimationFrame(() => {
+    scatterLabelLayoutFrame = 0;
+    layoutScatterLabels();
+  });
 }
 
 function setScatterDotColor(dot, quadrant) {
@@ -138,6 +406,15 @@ function renderScatter() {
     dot.appendChild(label);
     dot.addEventListener('focus', () => selectScatterTask(task.id));
     dot.addEventListener('click', () => selectScatterTask(task.id));
+    dot.addEventListener('pointerenter', () => {
+      if (scatterDrag && scatterDrag.dot !== dot) return;
+      selectScatterTask(task.id);
+    });
+    dot.addEventListener('pointerleave', () => {
+      if (scatterDrag?.dot === dot) return;
+      dot.classList.toggle('is-frontmost', dot.matches(':focus-visible') || dot.classList.contains('is-dragging') || dot.classList.contains('is-selected'));
+      scheduleScatterLabelLayout();
+    });
     dot.addEventListener('pointerdown', startScatterDrag);
     dot.addEventListener('pointermove', moveScatterDrag);
     dot.addEventListener('pointerup', finishScatterDrag);
@@ -146,12 +423,13 @@ function renderScatter() {
     container.appendChild(dot);
   }
   selectScatterTask(selectedScatterId);
+  scheduleScatterLabelLayout();
 }
 
 function updateScatterDot(dot, task, importance, urgency) {
   const position = { importance: snapWeight(importance), urgency: snapWeight(urgency) };
   setScatterDotColor(dot, quadrantForPosition(position.importance, position.urgency));
-  setScatterDotPosition(dot, position.importance, position.urgency);
+  setScatterDotPosition(dot, position.importance, position.urgency, { animate: true });
   dot.setAttribute('aria-label', scatterDotLabel(task, position));
 }
 
@@ -173,7 +451,9 @@ function startScatterDrag(event) {
   selectScatterTask(task.id);
   scatterDrag = { dot, task, pointerId: event.pointerId, next: scatterPosition(task) };
   dot.classList.add('is-dragging');
+  dot.classList.add('is-frontmost');
   dot.setPointerCapture?.(event.pointerId);
+  scheduleScatterLabelLayout();
 }
 
 function moveScatterDrag(event) {
@@ -200,7 +480,16 @@ async function persistScatterPosition(task, position) {
       return;
     }
     if (scatterDrafts.get(id)?.sequence === sequence) scatterDrafts.delete(id);
-    renderScatter();
+    const dot = [...document.querySelectorAll('.scatter-task')].find(item => item.dataset.id === id);
+    if (dot && currentView === 'scatter') {
+      const next = scatterPosition(task);
+      updateScatterDot(dot, task, next.importance, next.urgency);
+      dot.classList.toggle('is-selected', id === selectedScatterId);
+      dot.classList.toggle('is-frontmost', id === selectedScatterId || dot.classList.contains('is-dragging'));
+      scheduleScatterLabelLayout();
+    } else {
+      renderScatter();
+    }
   });
   scatterPersistence.set(id, request);
   request.finally(() => {
@@ -214,7 +503,9 @@ function finishScatterDrag(event) {
   const drag = scatterDrag;
   scatterDrag = null;
   drag.dot.classList.remove('is-dragging');
+  drag.dot.classList.add('is-frontmost');
   drag.dot.releasePointerCapture?.(event.pointerId);
+  scheduleScatterLabelLayout();
   void persistScatterPosition(drag.task, drag.next);
 }
 
@@ -234,6 +525,7 @@ function moveScatterWithKeys(event) {
   urgency = Math.max(0, Math.min(GRID_VALUES.length - 1, urgency));
   const position = { importance: GRID_VALUES[importance], urgency: GRID_VALUES[urgency] };
   updateScatterDot(event.currentTarget, task, position.importance, position.urgency);
+  scheduleScatterLabelLayout();
   void persistScatterPosition(task, position);
 }
 
@@ -293,6 +585,46 @@ async function deleteTask(li, t) {
   updateCounts();
   renderScatter();
   return true;
+}
+
+function resetDoneDeleteActions(focusButton = false) {
+  const deleteButton = $('#done-delete');
+  const deleteActions = $('#done-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  deleteActions.hidden = true;
+  deleteButton.hidden = doneItems().length === 0;
+  if (focusButton) deleteButton.focus();
+}
+
+function setupDoneDeleteActions() {
+  const deleteButton = $('#done-delete');
+  const deleteActions = $('#done-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  deleteButton.addEventListener('click', event => {
+    event.stopPropagation();
+    deleteButton.hidden = true;
+    deleteActions.hidden = false;
+    deleteActions.querySelector('.delete-cancel').focus();
+  });
+  deleteActions.querySelector('.delete-cancel').addEventListener('click', event => {
+    event.stopPropagation();
+    resetDoneDeleteActions(true);
+  });
+  deleteActions.querySelector('.delete-approve').addEventListener('click', async event => {
+    event.stopPropagation();
+    const approve = event.currentTarget;
+    if (approve.disabled) return;
+    approve.disabled = true;
+    try {
+      await api('DELETE', `${API}?done=true`);
+      tasks = tasks.filter(task => !task.done);
+      resetDoneDeleteActions();
+      render();
+    } catch {
+      approve.disabled = false;
+      resetDoneDeleteActions();
+    }
+  });
 }
 
 function cardEl(t) {
@@ -510,6 +842,7 @@ function toggleScatterNames() {
   scatterNamesVisible = !scatterNamesVisible;
   try { localStorage.setItem('decisive.scatterNamesVisible', String(scatterNamesVisible)); } catch {}
   updateScatterNamesToggle();
+  scheduleScatterLabelLayout();
 }
 
 // drag & drop (quadrants + done strip)
@@ -564,7 +897,10 @@ for (const ul of [...document.querySelectorAll('.cards')]) {
 }
 document.addEventListener('dragstart', e => { if (e.target.classList.contains('card')) draggedId = e.target.dataset.id; });
 document.addEventListener('dragend', () => { draggedId = null; });
-window.addEventListener('resize', () => document.querySelectorAll('.cards').forEach(syncListFade));
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.cards').forEach(syncListFade);
+  scheduleScatterLabelLayout();
+});
 
 function setView(view) {
   currentView = view === 'scatter' ? 'scatter' : 'matrix';
@@ -591,6 +927,7 @@ document.querySelectorAll('.view-button').forEach(button => {
   button.addEventListener('click', () => setView(button.dataset.view));
 });
 $('#task-names-toggle')?.addEventListener('click', toggleScatterNames);
+setupDoneDeleteActions();
 setView(new URLSearchParams(location.search).get('view') === 'scatter' ? 'scatter' : 'matrix');
 
 load();

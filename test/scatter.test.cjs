@@ -12,7 +12,7 @@ app.whenReady().then(async () => {
   });
   try {
     await win.loadURL(url);
-    const script = [
+  const script = [
       '(async () => {',
       '  const out = [];',
       "  const ok = (name, condition) => out.push((condition ? 'PASS ' : 'FAIL ') + name);",
@@ -43,6 +43,7 @@ app.whenReady().then(async () => {
       "  ok('every task starts on a snap point', dots.every(dot => allowed.has(dot.dataset.importance) && allowed.has(dot.dataset.urgency)));",
       "  ok('dots have one filled point and a hover card', dots.every(dot => !!dot.querySelector('.scatter-task-label') && dot.querySelector('.scatter-task-label').textContent));",
       '  if (namesToggle) {',
+      "    if (namesToggle.getAttribute('aria-pressed') === 'true') namesToggle.click();",
       "    const initialNamesState = namesToggle.getAttribute('aria-pressed');",
       '    namesToggle.click();',
       "    ok('task names toggle shows labels', namesToggle.getAttribute('aria-pressed') !== initialNamesState && document.querySelector('#scatter-view').classList.contains('names-visible'));",

@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,8 +16,10 @@ const DEFAULT_WEIGHTS = {
   delegate: { importance: 25, urgency: 75 },
   eliminate: { importance: 25, urgency: 25 },
 };
+const DONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 let tasks = [];
+let saveQueue = Promise.resolve();
 
 function weight(value, fallback) {
   const n = Number(value);
@@ -43,14 +45,38 @@ async function load() {
       applyDefaultWeights(task);
       changed ||= before !== String(task.importance) + ':' + String(task.urgency);
     });
-    if (changed) await save();
+    const removed = pruneExpiredDoneTasks();
+    if (changed || removed) await save();
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
     tasks = [];
     await save();
   }
 }
-async function save() { await writeFile(DATA_FILE, JSON.stringify(tasks, null, 2)); }
+function save() {
+  const payload = JSON.stringify(tasks, null, 2);
+  saveQueue = saveQueue.catch(() => {}).then(async () => {
+    const tempFile = `${DATA_FILE}.tmp`;
+    await writeFile(tempFile, payload);
+    await rename(tempFile, DATA_FILE);
+  });
+  return saveQueue;
+}
+
+function pruneExpiredDoneTasks(now = Date.now()) {
+  const cutoff = now - DONE_RETENTION_MS;
+  const before = tasks.length;
+  tasks = tasks.filter(task => {
+    if (task.done !== true || typeof task.doneAt !== 'string') return true;
+    const doneAt = Date.parse(task.doneAt);
+    return !Number.isFinite(doneAt) || doneAt >= cutoff;
+  });
+  return before - tasks.length;
+}
+
+async function runRetentionSweep() {
+  if (pruneExpiredDoneTasks() > 0) await save();
+}
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -69,13 +95,24 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith('/api/')) {
       const body = (req.method === 'GET' || !req.headers['content-length']) ? {} : JSON.parse(await readBody(req));
-      if (url.pathname === '/api/tasks' && req.method === 'GET') return json(200, tasks);
+      if (url.pathname === '/api/tasks' && req.method === 'GET') {
+        await runRetentionSweep();
+        return json(200, tasks);
+      }
 
       if (url.pathname === '/api/tasks' && req.method === 'POST') {
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
         const defaults = DEFAULT_WEIGHTS[q];
         const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q).length, done: false, doneAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
         tasks.push(t); await save(); return json(201, t);
+      }
+
+      if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('done') === 'true') {
+        const before = tasks.length;
+        tasks = tasks.filter(task => !task.done);
+        const deleted = before - tasks.length;
+        if (deleted) await save();
+        return json(200, { ok: true, deleted });
       }
 
       const m = url.pathname.match(/^\/api\/tasks\/([\w-]+)$/);
@@ -125,6 +162,8 @@ const server = http.createServer(async (req, res) => {
 load().then(() => {
   server.listen(PORT, () => {
     console.log(`Decisive on http://localhost:${PORT} (data: ${DATA_FILE})`);
+    const retentionTimer = setInterval(() => { void runRetentionSweep(); }, 60 * 60 * 1000);
+    retentionTimer.unref?.();
     if (process.platform === 'darwin' && !process.env.DATA_FILE) exec(`open http://localhost:${PORT}`);
   });
 }).catch(error => {
