@@ -39,8 +39,11 @@ app.whenReady().then(async () => {
   const win = new BrowserWindow({
     width: 1200,
     height: 840,
-    minWidth: 920,
-    minHeight: 640,
+    // Keep the three-column desktop matrix in a usable range. Below this
+    // width the browser layout switches to its compact 2×2 priority grid,
+    // but the native app should not normally reach that recovery mode.
+    minWidth: 1080,
+    minHeight: 720,
     title: '',
     backgroundColor: '#0b0b0b',
     titleBarStyle: 'hiddenInset',

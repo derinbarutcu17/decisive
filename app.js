@@ -1663,6 +1663,8 @@ function setView(view) {
   const scatterActive = currentView === 'scatter';
   const archiveActive = currentView === 'archive';
   const layout = $('#layout');
+  $('#console')?.classList.toggle('matrix-mode', !scatterActive && !archiveActive);
+  $('#console')?.classList.toggle('scatter-mode', scatterActive);
   layout.classList.toggle('scatter-mode', scatterActive);
   layout.classList.toggle('archive-mode', archiveActive);
   $('#matrix').hidden = scatterActive || archiveActive;

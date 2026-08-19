@@ -32,16 +32,18 @@ The 15px compact panel inset, 18px Matrix gap, and 34px Scatter axis rail are de
 
 ### Desktop: wider than 1040px
 
-- `#layout` is a two-column grid: Done rail plus the main view column.
-- Matrix is a 2×2 equal-track grid.
+- Matrix uses the three-column priority layout: Do remains tall, Schedule and Delegate stay paired, and Done/Eliminate yield space first.
+- The native macOS window has a 1080×720 minimum so the three-column arrangement is never forced into an unreadable native size.
 - Scatter occupies the main view column while the Done rail remains stable.
 - The plot is capped by the available chart-shell height, never by `vh` alone.
 
 ### Compact desktop/tablet: 720px–1040px
 
-- The layout becomes one column.
-- Matrix stacks into one column and Done follows it.
-- Scatter uses the full content width; its square plot stays inside the Scatter row.
+- Matrix flattens into one explicit 2×2 grid: Do and Schedule form the first row; Delegate and Eliminate form the second; Done gets a short third row. The row minimums are 190px, 150px, and 108px respectively, with a 12px gap.
+- Do, Schedule, and Delegate retain their task lists first; Eliminate and Done are the first surfaces to yield height.
+- Every compact panel has `min-height: 0` and clips its own bounds; its `.cards` list owns overflow. A populated Eliminate list may shrink below its three-row preferred height and scroll internally rather than paint into Done.
+- Original layout uses the same compact grid and containment rules so the layout toggle cannot create a nested-grid overlap.
+- Scatter uses the full content width, hides the low-priority Done rail, and keeps its square plot inside a single non-scrolling Scatter row.
 - Header actions remain independent of the centered brand.
 
 ### Phone: below 720px
@@ -102,7 +104,7 @@ Pass criteria:
 - brand center delta ≤ 1px;
 - plot width/height delta ≤ 1px;
 - Scatter plot is fully contained by `#scatter-view`;
-- Matrix quadrants do not overlap;
+- All five Matrix panels (Do, Schedule, Delegate, Eliminate, Done) stay contained by `#layout` and do not overlap;
 - Archive is standalone: Matrix, Scatter, and Done are hidden in Archive mode;
 - Archive history is not internally capped or scroll-clipped: the archive list's rendered bottom is reachable in normal page flow;
 - header actions do not overlap the brand;

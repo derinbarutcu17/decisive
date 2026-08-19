@@ -50,7 +50,19 @@ app.whenReady().then(async () => {
           archiveFrame: rect('#archive-view .archive-cards-frame'),
           archiveList: rect('#archive-view .archive-cards'),
         },
-        quadrants: [...document.querySelectorAll('#matrix > .quadrant')].map(node => { const r = node.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; }),
+        matrixPanels: [...document.querySelectorAll('#layout [data-quadrant], #done')].map(node => { const r = node.getBoundingClientRect(); return { id: node.id || node.dataset.quadrant, x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; }),
+        matrixContract: (() => {
+          const layout = document.querySelector('#layout')?.getBoundingClientRect();
+          const panels = [...document.querySelectorAll('#layout [data-quadrant], #done')]
+            .map(node => ({ id: node.id || node.dataset.quadrant, rect: node.getBoundingClientRect() }));
+          const overlaps = (a, b) => a.rect.left < b.rect.right - 1 && a.rect.right > b.rect.left + 1 && a.rect.top < b.rect.bottom - 1 && a.rect.bottom > b.rect.top + 1;
+          return {
+            active: document.querySelector('#matrix')?.hidden === false,
+            panelCount: panels.length,
+            panelsContained: !layout || panels.every(({ rect }) => rect.left >= layout.left - 1 && rect.right <= layout.right + 1 && rect.top >= layout.top - 1 && rect.bottom <= layout.bottom + 1),
+            panelsDisjoint: panels.every((panel, index) => panels.slice(index + 1).every(other => !overlaps(panel, other))),
+          };
+        })(),
         scatterSquareDelta: (() => { const r = document.querySelector('#scatter-plot')?.getBoundingClientRect(); return r ? Math.abs(r.width - r.height) : null; })(),
         scatterContained: (() => {
           const plot = document.querySelector('#scatter-plot')?.getBoundingClientRect();
@@ -112,7 +124,19 @@ app.whenReady().then(async () => {
       if (!contract.listFillsFrame) failures.push(`${item.state}: archive list does not fill the archive frame`);
       return failures;
     });
+  const matrixFailures = report
+    .filter(item => item.state.includes('matrix'))
+    .flatMap(item => {
+      const contract = item.matrixContract;
+      if (!contract) return [`${item.state}: matrix contract missing`];
+      const failures = [];
+      if (contract.panelCount !== 5) failures.push(`${item.state}: expected five matrix panels, found ${contract.panelCount}`);
+      if (!contract.panelsContained) failures.push(`${item.state}: matrix panel extends outside #layout`);
+      if (!contract.panelsDisjoint) failures.push(`${item.state}: matrix panels overlap`);
+      return failures;
+    });
   if (archiveFailures.length) console.error(`ARCHIVE LAYOUT FAILURES\n${archiveFailures.join('\n')}`);
+  if (matrixFailures.length) console.error(`MATRIX LAYOUT FAILURES\n${matrixFailures.join('\n')}`);
   console.log(JSON.stringify(report, null, 2));
-  app.exit(archiveFailures.length ? 1 : 0);
+  app.exit(archiveFailures.length || matrixFailures.length ? 1 : 0);
 });

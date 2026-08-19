@@ -77,6 +77,9 @@ button, input, textarea, select { font: inherit; }
   box-shadow: none;
   -webkit-app-region: drag;
 }
+#console.scatter-mode {
+  overflow: hidden;
+}
 #console::before {
   position: fixed;
   z-index: 20;
@@ -972,6 +975,7 @@ button, input, textarea, select { font: inherit; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   padding: 18px;
   border: 1px solid var(--line);
   border-top: 1px solid var(--line);
@@ -1417,50 +1421,98 @@ button, input, textarea, select { font: inherit; }
 }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 
-@media (max-width: 1040px) {
+/* Compact desktop rule: keep all four working quadrants in one stable 2×2
+   grid. The Done panel gets a short third row, so completed history yields
+   space before Do, Schedule, or Delegate become unreadable. `#matrix` is
+   deliberately flattened here; nesting its own grid inside #layout is what
+   caused the old original-layout overlap at narrow desktop widths. */
+@media (min-width: 721px) and (max-width: 1040px) {
+  #console.matrix-mode {
+    overflow: hidden;
+  }
   #layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(190px, 1.15fr) minmax(150px, .9fr) minmax(108px, .55fr);
+    gap: 12px;
     width: 100%;
+    overflow: hidden;
+  }
+  #layout.original-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(190px, 1.15fr) minmax(150px, .9fr) minmax(108px, .55fr);
   }
   #matrix {
-    display: grid;
-    grid-column: 1;
-    grid-row: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-    order: 1;
+    display: contents;
   }
-  #done { grid-column: 1; grid-row: auto; order: 3; }
-  .eliminate-section { grid-column: 1; grid-row: auto; order: 2; }
+  #done {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-height: 0;
+    max-height: none;
+  }
+  .eliminate-section {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+  #layout > #matrix > .quadrant,
+  #layout > .quadrant {
+    min-height: 0;
+    overflow: hidden;
+  }
+  #layout .eliminate-section.is-populated .cards-frame,
+  #layout .eliminate-section.is-drop-ready .cards-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 156px;
+  }
+  #layout #done .cards-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
   #matrix > .quadrant[data-quadrant="do"] { grid-column: 1; grid-row: 1; }
   #matrix > .quadrant[data-quadrant="schedule"] { grid-column: 2; grid-row: 1; }
   #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 1; grid-row: 2; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="do"] { grid-column: 1; grid-row: 1; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="schedule"] { grid-column: 2; grid-row: 1; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 1; grid-row: 2; }
-  #layout.original-layout #done,
-  #layout.original-layout .eliminate-section { grid-column: 1; grid-row: auto; }
-  #scatter-view { grid-column: 1; order: 1; }
-  #layout.scatter-mode {
-    flex: 0 0 auto;
-    grid-template-rows: auto auto;
+  #layout.original-layout #done {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
-  #layout.scatter-mode #scatter-view { height: auto; min-height: 0; }
-  #layout.scatter-mode #done { order: 2; }
-  .done-section .cards-frame { min-height: 0; }
-  #layout.scatter-mode .scatter-chart-shell {
-    width: min(100%, 606px);
-    grid-template-columns: 78px minmax(0, 520px);
-    grid-template-rows: auto 28px;
-    height: auto;
+  #layout.original-layout .eliminate-section {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  #scatter-view { grid-column: 1 / -1; grid-row: 1 / -1; }
+  #layout.scatter-mode {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  #layout.scatter-mode #done { display: none; }
+  #layout.scatter-mode #scatter-view {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
     min-height: 0;
   }
+  #layout.scatter-mode .scatter-chart-shell {
+    width: min(100%, 720px);
+    height: 100%;
+    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-rows: auto 28px;
+    min-height: 0;
+  }
+  #layout.scatter-mode .scatter-axis-y { width: 58px; font-size: 10px; }
   #layout.scatter-mode .scatter-plot {
     width: 100%;
     height: auto;
-    max-height: none;
+    max-height: 100%;
   }
 }
 @media (max-width: 720px) {
@@ -1508,11 +1560,50 @@ button, input, textarea, select { font: inherit; }
   }
   #layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    align-content: start;
     gap: 12px;
     margin-top: 16px;
+    overflow: hidden;
   }
-  #layout.scatter-mode { grid-template-rows: auto auto; }
-  #layout.scatter-mode #scatter-view { height: auto; min-height: 0; }
+  #layout.original-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  #layout > #done,
+  #layout > .eliminate-section,
+  #layout > #matrix {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  #layout > #matrix {
+    order: 1;
+  }
+  #layout > .eliminate-section {
+    order: 2;
+  }
+  #layout > #done {
+    order: 3;
+  }
+  #layout.original-layout > #done,
+  #layout.original-layout > .eliminate-section,
+  #layout.original-layout > #matrix {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  #layout.scatter-mode {
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+    overflow: hidden;
+  }
+  #layout.scatter-mode #done { display: none; }
+  #layout.scatter-mode #scatter-view {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
   #matrix {
     display: grid;
     grid-template-columns: 1fr;
