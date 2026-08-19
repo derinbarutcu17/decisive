@@ -4,10 +4,13 @@ const baseUrl = process.env.TEST_URL || 'http://127.0.0.1:4323/';
 const states = [
   { name: 'wide-matrix', width: 1440, height: 960, query: '' },
   { name: 'wide-scatter', width: 1440, height: 960, query: '?view=scatter' },
+  { name: 'wide-archive', width: 1440, height: 960, query: '?view=archive' },
   { name: 'compact-matrix', width: 920, height: 720, query: '' },
   { name: 'compact-scatter', width: 920, height: 720, query: '?view=scatter' },
+  { name: 'compact-archive', width: 920, height: 720, query: '?view=archive' },
   { name: 'iphone-matrix', width: 390, height: 844, query: '?iphone=1' },
   { name: 'iphone-scatter', width: 390, height: 844, query: '?iphone=1&view=scatter' },
+  { name: 'iphone-archive', width: 390, height: 844, query: '?iphone=1&view=archive' },
 ];
 
 app.whenReady().then(async () => {
@@ -43,6 +46,9 @@ app.whenReady().then(async () => {
           scatter: rect('#scatter-view'),
           scatterShell: rect('.scatter-chart-shell'),
           plot: rect('#scatter-plot'),
+          archive: rect('#archive-view'),
+          archiveFrame: rect('#archive-view .archive-cards-frame'),
+          archiveList: rect('#archive-view .archive-cards'),
         },
         quadrants: [...document.querySelectorAll('#matrix > .quadrant')].map(node => { const r = node.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; }),
         scatterSquareDelta: (() => { const r = document.querySelector('#scatter-plot')?.getBoundingClientRect(); return r ? Math.abs(r.width - r.height) : null; })(),
@@ -63,10 +69,50 @@ app.whenReady().then(async () => {
           return { width: style.width, height: style.height, justifySelf: style.justifySelf, alignSelf: style.alignSelf, gridColumn: style.gridColumn, gridRow: style.gridRow };
         })(),
         hidden: { matrix: document.querySelector('#matrix')?.hidden ?? null, scatter: document.querySelector('#scatter-view')?.hidden ?? null }
+        ,archiveContract: (() => {
+          const view = document.querySelector('#archive-view');
+          const frame = document.querySelector('#archive-view .archive-cards-frame');
+          const list = document.querySelector('#archive-view .archive-cards');
+          if (!view || !frame || !list) return null;
+          const viewStyle = getComputedStyle(view);
+          const frameStyle = getComputedStyle(frame);
+          const listStyle = getComputedStyle(list);
+          const listRect = list.getBoundingClientRect();
+          const frameRect = frame.getBoundingClientRect();
+          return {
+            active: !view.hidden,
+            matrixHidden: document.querySelector('#matrix')?.hidden === true,
+            doneHidden: document.querySelector('#done')?.hidden === true,
+            viewOverflow: viewStyle.overflow,
+            frameMaxHeight: frameStyle.maxHeight,
+            frameOverflow: frameStyle.overflow,
+            listOverflowY: listStyle.overflowY,
+            listWithinFrame: !view.hidden ? listRect.bottom <= frameRect.bottom + 1 : true,
+            listFillsFrame: !view.hidden ? Math.abs(listRect.width - frameRect.width) <= 1 : true,
+            archiveItemCount: list.querySelectorAll('.archive-item').length,
+          };
+        })()
       };
     })()`);
     report.push({ state: state.name, ...snapshot });
   }
+  const archiveFailures = report
+    .filter(item => item.state.includes('archive'))
+    .flatMap(item => {
+      const contract = item.archiveContract;
+      if (!contract) return [`${item.state}: archive contract missing`];
+      const failures = [];
+      if (!contract.active) failures.push(`${item.state}: archive view is not active`);
+      if (!contract.matrixHidden || !contract.doneHidden) failures.push(`${item.state}: Matrix or Done remains visible`);
+      if (contract.viewOverflow !== 'visible') failures.push(`${item.state}: archive view clips overflow`);
+      if (contract.frameMaxHeight !== 'none') failures.push(`${item.state}: archive frame has a max-height cap`);
+      if (contract.frameOverflow !== 'visible') failures.push(`${item.state}: archive frame clips overflow`);
+      if (contract.listOverflowY !== 'visible') failures.push(`${item.state}: archive list is an internal scroller`);
+      if (!contract.listWithinFrame) failures.push(`${item.state}: archive list extends outside its flow frame`);
+      if (!contract.listFillsFrame) failures.push(`${item.state}: archive list does not fill the archive frame`);
+      return failures;
+    });
+  if (archiveFailures.length) console.error(`ARCHIVE LAYOUT FAILURES\n${archiveFailures.join('\n')}`);
   console.log(JSON.stringify(report, null, 2));
-  app.exit(0);
+  app.exit(archiveFailures.length ? 1 : 0);
 });

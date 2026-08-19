@@ -30,6 +30,8 @@ app.whenReady().then(async () => {
       list.scrollTop = list.scrollHeight;
       list.dispatchEvent(new Event('scroll'));
       const fadeTopAtBottom = fade.getBoundingClientRect().top;
+      const fadeRect = fade.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
       return {
         overflowY: styles.overflowY,
         listHeight: list.clientHeight,
@@ -38,7 +40,10 @@ app.whenReady().then(async () => {
         fadeVisibleAtTop,
         fadeHiddenAtBottom: frame.classList.contains('at-bottom'),
         fadeStaysPinned: Math.abs(fadeTopAtTop - fadeTopAtBottom) < 1,
-        fadeUsesMask: /gradient/i.test(fadeStyles.webkitMaskImage || fadeStyles.maskImage || ''),
+        fadeUsesUniformOverlay: Math.abs(fadeRect.left - frameRect.left) < 1
+          && Math.abs(fadeRect.right - frameRect.right) < 1
+          && fadeStyles.borderRadius === '0px'
+          && /gradient/i.test(fadeStyles.webkitMaskImage || fadeStyles.maskImage || ''),
         fadeUsesBlur: fadeStyles.backdropFilter !== 'none' || fadeStyles.webkitBackdropFilter !== 'none',
         fadeOutsideScrollList: fade.parentElement === frame,
         doneFrameCanUsePanelHeight: doneFrameStyles.flexGrow === '1' && doneFrameStyles.maxHeight === 'none',
@@ -51,7 +56,7 @@ app.whenReady().then(async () => {
       ['bottom fade appears while more tasks are below', result.fadeVisibleAtTop],
       ['bottom fade clears at the end of the list', result.fadeHiddenAtBottom],
       ['bottom fade stays pinned while the list scrolls', result.fadeStaysPinned],
-      ['bottom fade uses a gradient mask', result.fadeUsesMask],
+      ['bottom fade is a uniform full-width overlay', result.fadeUsesUniformOverlay],
       ['bottom fade uses a blur layer', result.fadeUsesBlur],
       ['bottom fade sits outside the scrolling list', result.fadeOutsideScrollList],
       ['done list can use the full panel height', result.doneFrameCanUsePanelHeight],

@@ -1,11 +1,37 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const dir = await mkdtemp(path.join(tmpdir(), 'eisenhower-'));
 const port = 4322;
-const proc = spawn(process.execPath, ['server.js'], { env: { ...process.env, PORT: String(port), DATA_FILE: path.join(dir, 'data.json') } });
+const dataFile = path.join(dir, 'data.json');
+const oldDone = {
+  id: 'expired-done',
+  title: 'expired',
+  note: '',
+  quadrant: 'do',
+  order: 0,
+  done: true,
+  doneAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+  importance: 75,
+  urgency: 75,
+};
+const invalidArchived = {
+  id: 'invalid-archive-state',
+  title: 'active but archived',
+  note: '',
+  quadrant: 'eliminate',
+  order: 1,
+  done: false,
+  doneAt: null,
+  archived: true,
+  archivedAt: new Date().toISOString(),
+  importance: 75,
+  urgency: 75,
+};
+await writeFile(dataFile, JSON.stringify([oldDone, invalidArchived]));
+const proc = spawn(process.execPath, ['server.js'], { env: { ...process.env, PORT: String(port), DATA_FILE: dataFile } });
 const base = `http://localhost:${port}`;
 
 const wait = async () => {
@@ -18,6 +44,9 @@ const wait = async () => {
 
 try {
   await wait();
+  const initial = await (await fetch(base + '/api/tasks')).json();
+  assert(initial.find(x => x.id === oldDone.id)?.archived === true, '30-day retention should archive, not delete');
+  assert(initial.find(x => x.id === invalidArchived.id)?.archived === false, 'active tasks must not remain archived');
   const created = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'a', quadrant: 'do' }) })).json();
   assert(created.id && created.quadrant === 'do' && created.order === 0, 'create failed');
   const b = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'b', quadrant: 'do' }) })).json();
@@ -29,8 +58,19 @@ try {
   assert(doneT.done === true && typeof doneT.doneAt === 'string', 'mark done failed');
   const undone = await (await fetch(base + `/api/tasks/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: false }) })).json();
   assert(undone.done === false && undone.doneAt === null, 'unmark done failed');
+  const invalidArchive = await fetch(base + `/api/tasks/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: true }) });
+  assert(invalidArchive.status === 409, 'active tasks must not be archivable');
+  const archiveCandidate = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'archive me', quadrant: 'do' }) })).json();
+  await fetch(base + `/api/tasks/${archiveCandidate.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: true }) });
+  const archived = await (await fetch(base + '/api/tasks?done=true', { method: 'DELETE' })).json();
+  assert(archived.archived === 1, 'bulk done action should archive');
+  const archiveState = await (await fetch(base + '/api/tasks')).json();
+  assert(archiveState.find(x => x.id === archiveCandidate.id)?.archived === true, 'archived task should remain recoverable');
+  const archivedDelete = await fetch(base + `/api/tasks/${archiveCandidate.id}`, { method: 'DELETE' });
+  const afterArchivedDelete = await (await fetch(base + '/api/tasks')).json();
+  assert(archivedDelete.ok && !afterArchivedDelete.some(x => x.id === archiveCandidate.id), 'archived task delete failed');
   const del = await fetch(base + `/api/tasks/${created.id}`, { method: 'DELETE' });
-  assert(del.ok && (await (await fetch(base + '/api/tasks')).json()).length === 1, 'delete failed');
+  assert(del.ok && !(await (await fetch(base + '/api/tasks')).json()).some(x => x.id === created.id), 'delete failed');
   console.log('API tests PASS');
 } finally {
   proc.kill();

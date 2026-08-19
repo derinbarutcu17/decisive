@@ -63,8 +63,8 @@ const appSource = readSource(appPath);
 const styleSource = readSource(stylePath);
 const layout = sourceBetween(
   appSource,
-  'function layoutScatterLabels()',
-  'function scheduleScatterLabelLayout()',
+  'function layoutScatterLabels(',
+  'function scheduleScatterLabelLayout(',
 );
 
 const checks = [];
@@ -125,6 +125,38 @@ check(
   uuidSort
     ? `${appPath}:${lineNumber(appSource, layout.start + uuidSort.index)} ${lineAt(appSource, layout.start + uuidSort.index)}`
     : '',
+);
+
+check(
+  'scatter label layout accepts an active task for local reflow',
+  /function layoutScatterLabels\(\{ activeId = null \} = \{\}\)/.test(layout.text)
+    && /const activeKey = activeId == null \? null : String\(activeId\)/.test(layout.text),
+  `${appPath}: layoutScatterLabels() must receive the actively dragged task`,
+);
+
+check(
+  'scatter label measurements retain their source dot',
+  /measurements\.set\(dot, \{ dot, label, taskKey, dotRect, previousOffset, labelWidth, labelHeight \}\)/.test(layout.text),
+  `${appPath}: label measurements must retain the dot used for placement metadata`,
+);
+
+check(
+  'scatter labels use bounded local collision avoidance without a packing rail',
+  !/scatterLabelRailPositions/.test(layout.text)
+    && /labelRectsOverlap/.test(layout.text)
+    && /SCATTER_LABEL_MAX_REACTIVE_COUNT/.test(layout.text)
+    && /SCATTER_LABEL_MAX_REACTIVE_DEPTH/.test(layout.text)
+    && /labelCandidateScore/.test(layout.text)
+    && /Labels outside the local component keep their logical targets verbatim/.test(layout.text),
+  `${appPath}: label placement must be local, bounded, and tethered`,
+);
+
+check(
+  'scatter label motion has latest-target protection and reduced-motion support',
+  /scatterLabelPendingCommit = \{ sequence: layoutSequence, commits \}/.test(layout.text)
+    && /prefers-reduced-motion/.test(appSource)
+    && /is-reactive/.test(appSource),
+  `${appPath}: label updates must coalesce and honor reduced motion`,
 );
 
 const failed = checks.filter(result => !result.passed);

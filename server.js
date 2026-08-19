@@ -17,6 +17,7 @@ const DEFAULT_WEIGHTS = {
   eliminate: { importance: 25, urgency: 25 },
 };
 const DONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const DONE_VISIBLE_LIMIT = 10;
 
 let tasks = [];
 let saveQueue = Promise.resolve();
@@ -44,9 +45,19 @@ async function load() {
       const before = String(task.importance) + ':' + String(task.urgency);
       applyDefaultWeights(task);
       changed ||= before !== String(task.importance) + ':' + String(task.urgency);
+      if (typeof task.archived !== 'boolean') {
+        task.archived = false;
+        changed = true;
+      }
+      if (task.archived && task.done !== true) {
+        task.archived = false;
+        task.archivedAt = null;
+        changed = true;
+      }
     });
-    const removed = pruneExpiredDoneTasks();
-    if (changed || removed) await save();
+    const archived = archiveExpiredDoneTasks();
+    const archivedOverflow = archiveDoneOverflow();
+    if (changed || archived || archivedOverflow.length) await save();
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
     tasks = [];
@@ -63,19 +74,35 @@ function save() {
   return saveQueue;
 }
 
-function pruneExpiredDoneTasks(now = Date.now()) {
+function archiveExpiredDoneTasks(now = Date.now()) {
   const cutoff = now - DONE_RETENTION_MS;
-  const before = tasks.length;
-  tasks = tasks.filter(task => {
-    if (task.done !== true || typeof task.doneAt !== 'string') return true;
+  let archived = 0;
+  tasks.forEach(task => {
+    if (task.done !== true || task.archived === true || typeof task.doneAt !== 'string') return;
     const doneAt = Date.parse(task.doneAt);
-    return !Number.isFinite(doneAt) || doneAt >= cutoff;
+    if (Number.isFinite(doneAt) && doneAt < cutoff) {
+      task.archived = true;
+      task.archivedAt = task.archivedAt || new Date(now).toISOString();
+      archived += 1;
+    }
   });
-  return before - tasks.length;
+  return archived;
+}
+
+function archiveDoneOverflow(now = Date.now()) {
+  const visible = tasks
+    .filter(task => task.done === true && task.archived !== true)
+    .sort((a, b) => Date.parse(b.doneAt || '') - Date.parse(a.doneAt || ''));
+  const overflow = visible.slice(DONE_VISIBLE_LIMIT);
+  overflow.forEach(task => {
+    task.archived = true;
+    task.archivedAt = task.archivedAt || new Date(now).toISOString();
+  });
+  return overflow.map(task => task.id);
 }
 
 async function runRetentionSweep() {
-  if (pruneExpiredDoneTasks() > 0) await save();
+  if (archiveExpiredDoneTasks() > 0) await save();
 }
 
 function readBody(req) {
@@ -103,16 +130,21 @@ const server = http.createServer(async (req, res) => {
       if (url.pathname === '/api/tasks' && req.method === 'POST') {
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
         const defaults = DEFAULT_WEIGHTS[q];
-        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q).length, done: false, doneAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
+        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
         tasks.push(t); await save(); return json(201, t);
       }
 
       if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('done') === 'true') {
-        const before = tasks.length;
-        tasks = tasks.filter(task => !task.done);
-        const deleted = before - tasks.length;
-        if (deleted) await save();
-        return json(200, { ok: true, deleted });
+        let archived = 0;
+        tasks.forEach(task => {
+          if (task.done && !task.archived) {
+            task.archived = true;
+            task.archivedAt = task.archivedAt || new Date().toISOString();
+            archived += 1;
+          }
+        });
+        if (archived) await save();
+        return json(200, { ok: true, archived });
       }
 
       const m = url.pathname.match(/^\/api\/tasks\/([\w-]+)$/);
@@ -120,27 +152,43 @@ const server = http.createServer(async (req, res) => {
         const t = tasks.find(x => x.id === m[1]);
         if (!t) return json(404, { error: 'not found' });
         if (req.method === 'PATCH') {
+          const nextDone = 'done' in body ? !!body.done : t.done === true;
+          if ('archived' in body && body.archived && !nextDone) {
+            return json(409, { error: 'only completed tasks can be archived' });
+          }
           if ('title' in body) t.title = String(body.title);
           if ('note' in body) t.note = String(body.note);
           if ('quadrant' in body && !QUADRANTS.includes(body.quadrant)) return json(400, { error: 'invalid quadrant' });
           const defaults = DEFAULT_WEIGHTS[t.quadrant] || DEFAULT_WEIGHTS.do;
           if ('importance' in body) t.importance = weight(body.importance, defaults.importance);
           if ('urgency' in body) t.urgency = weight(body.urgency, defaults.urgency);
-          if ('done' in body) { t.done = !!body.done; t.doneAt = t.done ? new Date().toISOString() : null; }
+          if ('done' in body) {
+            t.done = !!body.done;
+            t.doneAt = t.done ? (t.doneAt || new Date().toISOString()) : null;
+            if (!t.done) {
+              t.archived = false;
+              t.archivedAt = null;
+            }
+          }
+          if ('archived' in body) {
+            t.archived = !!body.archived;
+            t.archivedAt = t.archived ? (t.archivedAt || new Date().toISOString()) : null;
+          }
           const moving = 'quadrant' in body && body.quadrant !== t.quadrant;
           if (moving || 'order' in body) {
             if (moving) {
-              const old = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
+              const old = tasks.filter(x => x.quadrant === t.quadrant && !x.done && !x.archived && x.id !== t.id).sort((a, b) => a.order - b.order);
               old.forEach((x, i) => x.order = i);
               t.quadrant = QUADRANTS.includes(body.quadrant) ? body.quadrant : t.quadrant;
               if (!('importance' in body) && !('urgency' in body)) applyDefaultWeights(t);
             }
-            const same = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
+            const same = tasks.filter(x => x.quadrant === t.quadrant && !x.done && !x.archived && x.id !== t.id).sort((a, b) => a.order - b.order);
             const idx = Math.min(Number(body.order ?? same.length), same.length);
             same.splice(idx, 0, t);
             same.forEach((x, i) => x.order = i);
           }
-          await save(); return json(200, t);
+          const archivedOverflowIds = t.done && !t.archived ? archiveDoneOverflow() : [];
+          await save(); return json(200, { ...t, archivedOverflowIds });
         }
         if (req.method === 'DELETE') { tasks = tasks.filter(x => x.id !== m[1]); await save(); return json(200, { ok: true }); }
       }

@@ -14,8 +14,8 @@ app.whenReady().then(async () => {
     await win.loadURL(url + '?view=scatter');
     const results = await win.webContents.executeJavaScript(`(async () => {
       const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-      const toggle = document.querySelector('#task-names-toggle');
-      if (toggle?.getAttribute('aria-pressed') !== 'true') toggle?.click();
+      const namesSetting = document.querySelector('#scatter-names-setting');
+      if (namesSetting && !namesSetting.checked) namesSetting.click();
       await wait(180);
       const plot = document.querySelector('#scatter-plot').getBoundingClientRect();
       const dots = [...document.querySelectorAll('.scatter-task')];
@@ -41,12 +41,12 @@ app.whenReady().then(async () => {
         overlappingPairs: pairs.length,
         activeIsFrontmost: !!active && active.zIndex >= 30,
         activeLabelIsVisible: !!active && active.visible,
-        labels: labels.map(item => ({ title: item.dot.querySelector('.scatter-task-label').textContent, id: item.dot.dataset.id, rect: { left: item.rect.left, top: item.rect.top, right: item.rect.right, bottom: item.rect.bottom, width: item.rect.width, height: item.rect.height }, zIndex: item.zIndex })),
+        labels: labels.map(item => ({ title: item.dot.querySelector('.scatter-task-label').textContent, id: item.dot.dataset.id, visible: item.visible, rect: { left: item.rect.left, top: item.rect.top, right: item.rect.right, bottom: item.rect.bottom, width: item.rect.width, height: item.rect.height }, zIndex: item.zIndex })),
         pairs,
       };
     })()`);
     const checks = [
-      ['tasks have visible labels when names are shown', results.taskCount > 0 && results.visibleCount === results.taskCount],
+      ['task names setting reveals all labels', results.taskCount > 0 && results.visibleCount === results.taskCount],
       ['visible labels stay inside the plot', results.labelsInsidePlot],
       ['visible labels do not overlap', results.overlappingPairs === 0],
       ['active dot is frontmost', results.activeIsFrontmost],

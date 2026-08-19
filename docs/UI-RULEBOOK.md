@@ -51,6 +51,20 @@ The 15px compact panel inset, 18px Matrix gap, and 34px Scatter axis rail are de
 - Matrix quadrants and Done are single-column panels.
 - Each panel owns a bounded task list; adding tasks scrolls inside the list instead of resizing the panel.
 
+### Archive history
+
+- Archive is a document-flow history view, not a bounded task viewport.
+- The archive panel must grow with its entries; the page owns scrolling when the history is taller than the viewport.
+- `.archive-cards-frame` and `.archive-cards` must keep `max-height: none`, `overflow: visible`, and must not use the task-list fade layer.
+- The four Matrix quadrants and Done panel are the only bounded list surfaces. Never reuse their four-row cap for Archive.
+- With `n` archived rows, the archive panel's content height must include the heading, all `n` rows, and the inter-row gaps; no row may be hidden behind an overlay or clipped at the panel midpoint.
+- Archive rows fill the archive panel's content width; they must not shrink to the width of the longest row.
+
+### View selection
+
+- The active Matrix, Scatter, or Archive control is indicated by text weight and color.
+- Do not add a second outline around the active control; the view switcher's outer boundary is the only control-group boundary.
+
 ### iPhone preview
 
 The 402px shell is an intentional device frame with a Dynamic Island. Its outer frame may exceed the CSS viewport by a small, documented amount; the app content inside it must remain aligned to the shell’s safe content width.
@@ -59,10 +73,15 @@ The 402px shell is an intentional device frame with a Dynamic Island. Its outer 
 
 - Dots are one filled point; no grid marker circles are added.
 - Labels are hidden by default and appear for hover, focus, and drag.
-- “Show names” may reveal all labels, but each visible label is measured and assigned a collision-aware placement from the six available anchors.
+- The Settings panel may enable “Show task names in Scatter.” Each visible label stays attached to its own dot using a nearby anchor; labels avoid collisions only inside the local collision-connected neighborhood.
 - Labels are clamped to the plot bounds and use truncation for inactive long titles; they never change the plot’s dimensions or trigger page reflow.
 - The interacted dot gets `.is-frontmost` and a higher stacking layer. Its label is always above neighboring labels and retains the full task title while active.
 - When a task crosses a quadrant boundary, the dot color follows the destination quadrant immediately.
+- During drag or keyboard movement, every label remains parented to its own dot. Labels never move to a distant collision-avoidance rail; anchors and small nudges are the only allowed corrections.
+- A moving label gets priority. Only labels whose current rectangles form a local collision-connected component may react, capped at eight labels and four collision hops. Unconnected labels retain their logical target exactly.
+- Labels must stay within 4px of another label's clearance when space permits, but controlled overlap is allowed when every nearby anchor would violate the plot bounds or the attachment limit.
+- A label may nudge no more than 12px from an anchor. Anchor changes use a 20% improvement threshold and a 120ms lock to prevent rapid side flipping; a collision must persist for roughly 100ms before an inactive label yields its anchor.
+- Label targets are logical transform offsets, not live in-flight DOM rectangles. Each frame commits only the latest target and uses an eased transform so the dot and its local label cluster remain trackable without jitter.
 
 ## Verification contract
 
@@ -70,10 +89,13 @@ Run `node test/layout-audit.cjs` through Electron against an isolated fixture se
 
 - 1440×960 Matrix
 - 1440×960 Scatter
+- 1440×960 Archive
 - 920×720 Matrix
 - 920×720 Scatter
+- 920×720 Archive
 - 390×844 iPhone Matrix
 - 390×844 iPhone Scatter
+- 390×844 iPhone Archive
 
 Pass criteria:
 
@@ -81,6 +103,8 @@ Pass criteria:
 - plot width/height delta ≤ 1px;
 - Scatter plot is fully contained by `#scatter-view`;
 - Matrix quadrants do not overlap;
+- Archive is standalone: Matrix, Scatter, and Done are hidden in Archive mode;
+- Archive history is not internally capped or scroll-clipped: the archive list's rendered bottom is reachable in normal page flow;
 - header actions do not overlap the brand;
 - visible Scatter labels do not overlap one another when space permits;
 - the active label is frontmost;
