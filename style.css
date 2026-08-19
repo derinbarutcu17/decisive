@@ -1136,6 +1136,31 @@ button, input, textarea, select { font: inherit; }
   letter-spacing: 0;
   place-items: center;
   align-self: start;
+  transform: translateZ(0);
+  transition:
+    color .18s cubic-bezier(.2, 0, 0, 1),
+    background-color .18s cubic-bezier(.2, 0, 0, 1),
+    border-color .18s cubic-bezier(.2, 0, 0, 1),
+    box-shadow .18s cubic-bezier(.2, 0, 0, 1),
+    transform .18s cubic-bezier(.2, 0, 0, 1);
+}
+.quadrant h2 .count.value-flash,
+.archive-heading h1 span.value-flash {
+  transform: scale(1.06);
+}
+.quadrant h2 .count.value-flash-up,
+.archive-heading h1 span.value-flash-up {
+  color: var(--done-color);
+  border-color: var(--done-color);
+  background: color-mix(in srgb, var(--done-color) 12%, var(--surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--done-color) 18%, transparent);
+}
+.quadrant h2 .count.value-flash-down,
+.archive-heading h1 span.value-flash-down {
+  color: var(--eliminate-color);
+  border-color: var(--eliminate-color);
+  background: color-mix(in srgb, var(--eliminate-color) 10%, var(--surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--eliminate-color) 16%, transparent);
 }
 .cards-frame {
   position: relative;
@@ -1243,6 +1268,13 @@ button, input, textarea, select { font: inherit; }
 }
 .card.drop-settle {
   animation: card-settle .34s cubic-bezier(.22, 1, .36, 1);
+}
+.card.card-entered {
+  animation: card-enter .24s cubic-bezier(.23, 1, .32, 1) both;
+}
+@keyframes card-enter {
+  from { opacity: .25; transform: translateY(6px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes card-settle {
   0% { opacity: .72; border-color: var(--line-strong); background: var(--surface-raised); }
@@ -1751,6 +1783,7 @@ button, input, textarea, select { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
   .card.drop-settle { animation: none !important; }
+  .card.card-entered { animation: none !important; }
   .delete-actions:not([hidden]) { animation: none !important; }
   .card:hover { transform: none; }
 }

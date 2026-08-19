@@ -24,6 +24,7 @@ const scatterLabelPositions = new Map();
 const scatterLabelMemory = new Map();
 let scatterLabelPendingCommit = null;
 const scatterDotMotions = new WeakMap();
+const valueFlashTimers = new WeakMap();
 let scatterPersistSequence = 0;
 let statusTimer = 0;
 let asciiBackgroundEnabled = true;
@@ -135,13 +136,35 @@ function gridIndex(value) {
   return Math.max(0, GRID_VALUES.indexOf(value));
 }
 
+function updateValueFlash(element, nextValue) {
+  if (!element) return;
+  const next = Number(nextValue);
+  const previous = Number(element.dataset.value);
+  element.textContent = String(nextValue);
+  element.dataset.value = String(next);
+  if (!Number.isFinite(previous) || previous === next) return;
+
+  const previousTimer = valueFlashTimers.get(element);
+  if (previousTimer) window.clearTimeout(previousTimer);
+  element.classList.remove('value-flash', 'value-flash-up', 'value-flash-down');
+  // Restart only the short-lived feedback cue. The badge itself keeps its
+  // reserved dimensions, so the surrounding matrix never reflows.
+  void element.offsetWidth;
+  const direction = next > previous ? 'up' : 'down';
+  element.classList.add('value-flash', `value-flash-${direction}`);
+  valueFlashTimers.set(element, window.setTimeout(() => {
+    element.classList.remove('value-flash', `value-flash-${direction}`);
+    valueFlashTimers.delete(element);
+  }, 700));
+}
+
 function updateCounts() {
-  for (const q of quadrants()) q.querySelector('.count').textContent = cardsFor(q.dataset.quadrant).length;
+  for (const q of quadrants()) updateValueFlash(q.querySelector('.count'), cardsFor(q.dataset.quadrant).length);
   const doneCount = doneItems().length;
-  $('#done .count').textContent = doneCount;
+  updateValueFlash($('#done .count'), doneCount);
   updateDoneDeleteControl(doneCount);
   const archiveCount = $('#archive-count');
-  if (archiveCount) archiveCount.textContent = archiveItems().length;
+  if (archiveCount) updateValueFlash(archiveCount, archiveItems().length);
   syncEliminateRail();
 }
 
@@ -1053,6 +1076,18 @@ function settleCard(li) {
   });
 }
 
+function enterCard(li) {
+  if (!li) return;
+  li.classList.remove('card-entered');
+  requestAnimationFrame(() => {
+    if (!li.isConnected) return;
+    li.classList.add('card-entered');
+    li.addEventListener('animationend', () => li.classList.remove('card-entered'), { once: true });
+    // Reduced-motion mode intentionally has no animationend event.
+    window.setTimeout(() => li.classList.remove('card-entered'), 280);
+  });
+}
+
 function animateCardResize(li, update) {
   if (!li?.isConnected) {
     update();
@@ -1398,6 +1433,7 @@ $('#quick-add').addEventListener('keydown', async e => {
   const ul = document.querySelector('.quadrant[data-quadrant="do"] .cards');
   const li = cardEl(t);
   ul.appendChild(li);
+  enterCard(li);
   refreshEmpty(ul);
   updateCounts();
   renderScatter();
