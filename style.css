@@ -139,7 +139,7 @@ button, input, textarea, select { font: inherit; }
   letter-spacing: -.01em;
 }
 .github-link {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
@@ -1712,7 +1712,6 @@ button, input, textarea, select { font: inherit; }
     margin-inline: 0 auto;
     gap: 10px;
   }
-  .github-link { display: inline-flex; }
   .header-actions {
     position: static;
     flex-wrap: wrap;
