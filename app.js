@@ -1,4 +1,9 @@
 const API = '/api/tasks';
+const PREVIEW_STORAGE_KEY = 'decisive.preview.tasks.v2';
+const isPreviewMode = () => {
+  const host = window.location.hostname;
+  return host.endsWith('.vercel.app') || host.endsWith('.github.io') || new URLSearchParams(window.location.search).get('demo') === '1';
+};
 const QLABELS = { do: 'Do', schedule: 'Schedule', delegate: 'Delegate', eliminate: 'Eliminate' };
 const GRID_VALUES = Array.from({ length: 21 }, (_, index) => index * 5);
 const DEFAULT_SCATTER = {
@@ -7,6 +12,22 @@ const DEFAULT_SCATTER = {
   delegate: { importance: 25, urgency: 75 },
   eliminate: { importance: 25, urgency: 25 },
 };
+const PREVIEW_DEMO_TASKS = [
+  ['preview-001', 'Ship the interaction spec', 'do', 0, 85, 95],
+  ['preview-002', 'Polish onboarding focus states', 'do', 1, 75, 85],
+  ['preview-003', 'Prepare launch screenshots', 'do', 2, 65, 75],
+  ['preview-004', 'Prototype research dashboard filters', 'schedule', 0, 85, 35],
+  ['preview-005', 'Plan the design-token migration', 'schedule', 1, 75, 25],
+  ['preview-006', 'Map the next usability study', 'schedule', 2, 65, 15],
+  ['preview-007', 'QA the component library in Safari', 'delegate', 0, 35, 75],
+  ['preview-008', 'Write accessibility notes for charts', 'delegate', 1, 45, 65],
+  ['preview-009', 'Remove duplicate dashboard variants', 'eliminate', 0, 15, 35],
+  ['preview-010', 'Archive unused Figma explorations', 'eliminate', 1, 10, 25],
+  ['preview-011', 'Audit loading and error states', 'do', 0, 75, 75, true, -3],
+  ['preview-012', 'Publish the component usage guide', 'schedule', 0, 65, 55, true, -2],
+  ['preview-013', 'Review the visual regression report', 'delegate', 0, 45, 45, true, -1],
+  ['preview-014', 'Resolve the old navigation fork', 'eliminate', 0, 10, 10, true, -8],
+];
 const SCATTER_COLORS = { do: '--do-color', schedule: '--schedule-color', delegate: '--delegate-color', eliminate: '--eliminate-color' };
 let tasks = [];
 let captureBusy = false;
@@ -59,15 +80,97 @@ const $ = sel => document.querySelector(sel);
 const quadrants = () => [...document.querySelectorAll('.quadrant:not(.done-section)')];
 const cardIn = id => document.querySelector(`.card[data-id="${id}"]`);
 
-async function api(method, path, body) {
-  let r;
+function readPreviewTasks() {
+  if (!isPreviewMode()) return null;
   try {
-    r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-  } catch {
-    throw new Error('offline');
+    const value = JSON.parse(localStorage.getItem(PREVIEW_STORAGE_KEY) || 'null');
+    return Array.isArray(value) ? value : null;
+  } catch { return null; }
+}
+
+function persistPreviewTasks() {
+  if (!isPreviewMode()) return;
+  try { localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(tasks)); } catch {}
+}
+
+function previewMutationFallback(method, path, body = {}) {
+  if (!isPreviewMode()) return null;
+  if (method === 'DELETE') return { ok: true };
+  if (method === 'POST' && path === '/api/demo/restore') {
+    const restored = PREVIEW_DEMO_TASKS.map(([id, title, quadrant, order, importance, urgency, done = false, daysAgo = 0]) => ({
+      id,
+      title,
+      note: '',
+      quadrant,
+      order,
+      done,
+      doneAt: done ? new Date(Date.now() - Math.max(0, -daysAgo) * 24 * 60 * 60 * 1000).toISOString() : null,
+      archived: false,
+      archivedAt: null,
+      importance,
+      urgency,
+    }));
+    return { ok: true, restored: restored.length, tasks: restored };
   }
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+  if (method === 'POST' && path === API) {
+    const quadrant = ['do', 'schedule', 'delegate', 'eliminate'].includes(body.quadrant) ? body.quadrant : 'do';
+    const defaults = DEFAULT_SCATTER[quadrant] || DEFAULT_SCATTER.do;
+    return {
+      id: `preview-local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title: String(body.title || ''),
+      note: String(body.note || ''),
+      quadrant,
+      order: cardsFor(quadrant).length,
+      done: false,
+      doneAt: null,
+      archived: false,
+      archivedAt: null,
+      importance: defaults.importance,
+      urgency: defaults.urgency,
+    };
+  }
+  if (method !== 'PATCH') return null;
+  const id = path.match(/\/api\/tasks\/([^/?]+)/)?.[1];
+  const current = tasks.find(task => String(task.id) === String(id));
+  if (!current) return null;
+  const next = { ...current, ...body };
+  if ('done' in body) {
+    next.done = Boolean(body.done);
+    next.doneAt = next.done ? (next.doneAt || new Date().toISOString()) : null;
+    if (!next.done) { next.archived = false; next.archivedAt = null; }
+  }
+  if ('archived' in body) {
+    next.archived = Boolean(body.archived);
+    next.archivedAt = next.archived ? (next.archivedAt || new Date().toISOString()) : null;
+  }
+  return next;
+}
+
+async function api(method, path, body) {
+  const retryable = ['GET', 'PATCH', 'DELETE'].includes(method) || (method === 'POST' && path === '/api/demo/restore');
+  let lastError = new Error('offline');
+  for (let attempt = 0; attempt < (retryable ? 3 : 1); attempt += 1) {
+    try {
+      const r = await fetch(path, {
+        method,
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (r.ok) return r.json();
+      lastError = new Error(`HTTP ${r.status}`);
+      const transient = [408, 425, 429, 500, 502, 503, 504].includes(r.status);
+      if (!retryable || !transient || attempt === 2) throw lastError;
+    } catch (error) {
+      lastError = error;
+      if (!retryable || attempt === 2) {
+        const fallback = previewMutationFallback(method, path, body);
+        if (fallback !== null) return fallback;
+        throw error;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 120 * (attempt + 1)));
+  }
+  throw lastError;
 }
 
 function setStatus(message, state = 'neutral', { autoHide = false } = {}) {
@@ -87,6 +190,7 @@ function setStatus(message, state = 'neutral', { autoHide = false } = {}) {
 
 function showSaveSuccess() {
   // Successful local writes stay silent; only actionable failures are surfaced.
+  persistPreviewTasks();
   setStatus('');
 }
 
@@ -96,11 +200,22 @@ function showSaveError() {
 
 async function load() {
   setStatus('Loading local data…');
+  const cachedTasks = readPreviewTasks();
   try {
-    tasks = await api('GET', API);
+    const remoteTasks = await api('GET', API);
+    // The hosted preview is intentionally local-first. Vercel functions are
+    // ephemeral, so a cold start must never erase a visitor's current board.
+    tasks = readPreviewTasks() ?? remoteTasks;
     render();
+    persistPreviewTasks();
     setStatus('');
   } catch {
+    if (cachedTasks) {
+      tasks = cachedTasks;
+      render();
+      setStatus('');
+      return;
+    }
     setStatus('Couldn’t load local data. Refresh to retry.', 'error');
   }
 }
@@ -164,7 +279,9 @@ function updateCounts() {
   updateValueFlash($('#done .count'), doneCount);
   updateDoneDeleteControl(doneCount);
   const archiveCount = $('#archive-count');
-  if (archiveCount) updateValueFlash(archiveCount, archiveItems().length);
+  const archivedItems = archiveItems();
+  if (archiveCount) updateValueFlash(archiveCount, archivedItems.length);
+  updateArchiveDeleteControl(archivedItems.length);
   syncEliminateRail();
 }
 
@@ -1189,6 +1306,60 @@ function setupDoneDeleteActions() {
   });
 }
 
+function updateArchiveDeleteControl(archiveCount = archiveItems().length) {
+  const deleteButton = $('#archive-delete');
+  const deleteActions = $('#archive-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  if (!archiveCount) {
+    deleteButton.hidden = true;
+    deleteActions.hidden = true;
+    return;
+  }
+  if (deleteActions.hidden) deleteButton.hidden = false;
+}
+
+function resetArchiveDeleteActions(focusButton = false) {
+  const deleteButton = $('#archive-delete');
+  const deleteActions = $('#archive-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  deleteActions.hidden = true;
+  deleteButton.hidden = archiveItems().length === 0;
+  if (focusButton) deleteButton.focus();
+}
+
+function setupArchiveDeleteActions() {
+  const deleteButton = $('#archive-delete');
+  const deleteActions = $('#archive-delete-confirm');
+  if (!deleteButton || !deleteActions) return;
+  deleteButton.addEventListener('click', event => {
+    event.stopPropagation();
+    deleteButton.hidden = true;
+    deleteActions.hidden = false;
+    deleteActions.querySelector('.delete-cancel').focus();
+  });
+  deleteActions.querySelector('.delete-cancel').addEventListener('click', event => {
+    event.stopPropagation();
+    resetArchiveDeleteActions(true);
+  });
+  deleteActions.querySelector('.delete-approve').addEventListener('click', async event => {
+    event.stopPropagation();
+    const approve = event.currentTarget;
+    if (approve.disabled) return;
+    approve.disabled = true;
+    try {
+      await api('DELETE', `${API}?archived=true`);
+      tasks = tasks.filter(task => !(task.done && task.archived));
+      resetArchiveDeleteActions();
+      render();
+      showSaveSuccess();
+    } catch {
+      approve.disabled = false;
+      resetArchiveDeleteActions();
+      showSaveError();
+    }
+  });
+}
+
 function cardEl(t, { readOnly = false } = {}) {
   const li = document.createElement('li');
   li.className = 'card' + (t.done ? ' done' : '') + (readOnly ? ' is-readonly' : '');
@@ -1462,6 +1633,7 @@ function renderArchive() {
   const ul = $('#archive-view .archive-cards');
   if (!ul) return;
   const items = archiveItems();
+  updateArchiveDeleteControl(items.length);
   ul.querySelectorAll('.archive-item').forEach(item => item.remove());
   items.forEach(t => ul.appendChild(archiveCardEl(t)));
   refreshEmpty(ul);
@@ -1573,12 +1745,37 @@ function syncSettingsToggle(input, on, animate = false) {
   input.classList.add('is-init');
 }
 
+async function restoreDemoContent() {
+  const button = $('#restore-demo-content');
+  if (!button || button.disabled) return;
+  const confirmed = window.confirm('Restore the demo board? This removes the current tasks and replaces them with the built-in examples.');
+  if (!confirmed) return;
+  button.disabled = true;
+  try {
+    const result = await api('POST', '/api/demo/restore');
+    const restored = Array.isArray(result.tasks) ? result.tasks : [];
+    const validQuadrants = new Set(['do', 'schedule', 'delegate', 'eliminate']);
+    if (!restored.length || restored.some(task => !task || task.id == null || !validQuadrants.has(task.quadrant))) {
+      throw new Error('invalid demo fixture');
+    }
+    tasks = restored.map(task => ({ ...task }));
+    render();
+    setSettingsOpen(false);
+    showSaveSuccess();
+  } catch {
+    showSaveError();
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function setupSettings() {
   const toggle = $('#settings-toggle');
   const panel = $('#settings-panel');
   const backgroundToggle = $('#ascii-background-toggle');
   const originalLayoutToggle = $('#original-layout-toggle');
   const namesButton = $('#scatter-names-button');
+  const restoreDemoButton = $('#restore-demo-content');
   if (!toggle || !panel || !backgroundToggle) return;
   backgroundToggle.checked = asciiBackgroundEnabled;
   syncSettingsToggle(backgroundToggle, asciiBackgroundEnabled);
@@ -1596,6 +1793,7 @@ function setupSettings() {
   backgroundToggle.addEventListener('change', () => setAsciiBackgroundEnabled(backgroundToggle.checked));
   originalLayoutToggle?.addEventListener('change', () => setOriginalLayoutEnabled(originalLayoutToggle.checked));
   namesButton?.addEventListener('click', () => setScatterNamesVisible(!scatterNamesVisible));
+  restoreDemoButton?.addEventListener('click', () => void restoreDemoContent());
   document.addEventListener('click', event => {
     if (!event.target.closest('.settings-wrap')) setSettingsOpen(false);
   });
@@ -1745,6 +1943,7 @@ document.querySelectorAll('.view-button').forEach(button => {
   button.addEventListener('click', () => setView(button.dataset.view));
 });
 setupDoneDeleteActions();
+setupArchiveDeleteActions();
 setupEliminateRecovery();
 setupSettings();
 const initialView = new URLSearchParams(location.search).get('view');

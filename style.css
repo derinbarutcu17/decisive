@@ -346,12 +346,47 @@ button, input, textarea, select { font: inherit; }
 }
 .settings-option input:focus-visible { outline: 2px solid var(--focus-neutral); outline-offset: 2px; }
 .settings-option + .settings-option { margin-top: 12px; }
+.settings-divider {
+  height: 1px;
+  margin: 14px 0 12px;
+  background: var(--line);
+}
+.settings-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  transition: color .16s ease;
+}
+.settings-action:hover,
+.settings-action:focus-visible { color: var(--ink); }
+.settings-action:focus-visible { outline: 2px solid var(--focus-neutral); outline-offset: 3px; }
+.settings-action:disabled { cursor: wait; opacity: .5; }
+.settings-action svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
 .settings-help {
   margin-top: 14px;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.4;
 }
+.settings-demo-help { margin-top: 4px; }
 
 .app-status {
   min-height: 16px;
@@ -547,6 +582,53 @@ button, input, textarea, select { font: inherit; }
 .archive-heading > div {
   min-width: 0;
 }
+.archive-delete-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  margin-inline-start: auto;
+}
+.archive-delete-actions button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+  transition: color .18s ease, opacity .18s ease;
+}
+.archive-delete-actions button:hover,
+.archive-delete-actions button:focus-visible {
+  color: var(--ink);
+  background: transparent;
+  outline: none;
+}
+.archive-delete-actions .archive-delete { opacity: .58; }
+.archive-delete-actions .archive-delete:hover,
+.archive-delete-actions .archive-delete:focus-visible { opacity: 1; }
+.archive-delete-actions svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  transition: stroke-width .18s ease;
+}
+.archive-delete-actions .archive-delete:hover svg,
+.archive-delete-actions .archive-delete:focus-visible svg { stroke-width: 2.25; }
+.archive-delete-actions .delete-actions { display: flex; gap: 2px; }
+.archive-delete-actions .delete-actions[hidden] { display: none; }
+.archive-delete-actions .delete-actions button:hover,
+.archive-delete-actions .delete-actions button:focus-visible { font-weight: 750; }
+.archive-delete-actions .delete-approve { color: var(--ink); }
 .archive-heading h1 {
   display: flex;
   align-items: center;
@@ -1072,6 +1154,19 @@ button, input, textarea, select { font: inherit; }
 .eliminate-empty span { color: var(--muted); }
 .eliminate-empty.hidden { display: none; }
 .eliminate-section .cards-fade { display: block; }
+
+/* On wide desktop the eliminate rail shares the full second grid row. Keep
+   its scroll/fade surface tied to the rail's actual bottom edge instead of
+   stopping after the first few task heights. Compact layouts retain their
+   bounded three-row treatment below. */
+@media (min-width: 1041px) {
+  .eliminate-section.is-populated .cards-frame,
+  .eliminate-section.is-drop-ready .cards-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
 .quadrant h2 {
   font-family: var(--font-display);
   position: relative;
@@ -1375,6 +1470,29 @@ button, input, textarea, select { font: inherit; }
 .card .title { font-weight: 600; }
 .card .note { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .card .when { margin-top: 5px; color: var(--muted); font-size: 10px; letter-spacing: .06em; }
+.done-section .card.done {
+  min-height: 72px;
+  padding-block: 9px;
+}
+.done-section .card.done .content {
+  min-width: 0;
+}
+.done-section .card.done .title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+.done-section .card.done .when {
+  overflow: hidden;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .card.editing { border-color: var(--q); box-shadow: none; cursor: default; }
 .card.editing .note { display: block; overflow: visible; }
 .card input, .card textarea {

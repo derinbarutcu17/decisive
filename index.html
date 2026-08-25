@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisive</title>
 <script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 <div id="phone-shell">
@@ -37,6 +37,12 @@
           <span>Original layout</span>
           <input id="original-layout-toggle" type="checkbox" role="switch">
         </label>
+        <div class="settings-divider" aria-hidden="true"></div>
+        <button type="button" class="settings-action" id="restore-demo-content">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg>
+          <span>Restore demo content</span>
+        </button>
+        <p class="settings-help settings-demo-help">Replaces this board with the built-in demo examples. Current tasks will be removed.</p>
         <p class="settings-help">Turn off the background to reduce motion and processing.</p>
       </div>
     </div>
@@ -51,7 +57,7 @@
 </section>
 <div id="layout">
 <aside class="quadrant done-section" id="done">
-  <h2><span class="dot"></span><span class="quadrant-name">Done</span><small>completed</small><span class="count" aria-live="polite" aria-atomic="true">0</span><span class="done-delete-actions"><button type="button" class="done-delete" id="done-delete" aria-label="Archive all completed tasks" title="Archive all completed tasks" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7l1-3h4l1 3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button><span class="delete-actions" id="done-delete-confirm" hidden><button type="button" class="delete-cancel" aria-label="Cancel archive all completed tasks" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><button type="button" class="delete-approve" aria-label="Confirm archive all completed tasks" title="Archive completed tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></span></span></h2>
+  <h2><span class="dot"></span><span class="quadrant-name">Done</span><small>completed</small><span class="count" aria-live="polite" aria-atomic="true">0</span><span class="done-delete-actions"><button type="button" class="done-delete" id="done-delete" aria-label="Archive all completed tasks" title="Archive all completed tasks" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg></button><span class="delete-actions" id="done-delete-confirm" hidden><button type="button" class="delete-cancel" aria-label="Cancel archive all completed tasks" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><button type="button" class="delete-approve" aria-label="Confirm archive all completed tasks" title="Archive completed tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></span></span></h2>
   <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
 </aside>
 <section class="quadrant eliminate-section" data-quadrant="eliminate">
@@ -110,6 +116,15 @@
     <div>
       <h1 id="archive-title">Archive <span id="archive-count" aria-live="polite">0</span></h1>
     </div>
+    <div class="archive-delete-actions" aria-label="Archive actions">
+      <button type="button" class="archive-delete" id="archive-delete" aria-label="Delete all archived tasks" title="Delete all archived tasks" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7l1-3h4l1 3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+      </button>
+      <span class="delete-actions" id="archive-delete-confirm" hidden>
+        <button type="button" class="delete-cancel" aria-label="Cancel delete all archived tasks" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <button type="button" class="delete-approve" aria-label="Confirm delete all archived tasks" title="Delete all archived tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button>
+      </span>
+    </div>
   </div>
   <div class="cards-frame archive-cards-frame"><ul class="cards archive-cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
 </section>
@@ -117,7 +132,7 @@
 </div>
 </div>
 <script type="module" src="ascii-background.js?v=2"></script>
-<script src="app.js?v=24"></script>
+<script src="app.js?v=28"></script>
 <script src="metal-shader.js?v=1"></script>
 </body>
 </html>

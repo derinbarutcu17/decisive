@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,7 @@ import { exec } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
+const DEMO_DATA_FILE = path.join(__dirname, 'examples', 'demo-data.json');
 const PORT = process.env.PORT || 4321;
 const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'];
 const SNAP_POINTS = Array.from({ length: 21 }, (_, index) => index * 5);
@@ -65,13 +66,41 @@ async function load() {
   }
 }
 function save() {
-  const payload = JSON.stringify(tasks, null, 2);
   saveQueue = saveQueue.catch(() => {}).then(async () => {
-    const tempFile = `${DATA_FILE}.tmp`;
-    await writeFile(tempFile, payload);
-    await rename(tempFile, DATA_FILE);
+    // Snapshot at the point the queued write begins. This prevents an older
+    // request from overwriting a newer change when several interactions land
+    // in the same event loop turn.
+    const payload = JSON.stringify(tasks, null, 2);
+    await mkdir(path.dirname(DATA_FILE), { recursive: true });
+    const tempFile = `${DATA_FILE}.${process.pid}.${randomUUID()}.tmp`;
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await writeFile(tempFile, payload, 'utf8');
+        await rename(tempFile, DATA_FILE);
+        return;
+      } catch (error) {
+        lastError = error;
+        try { await unlink(tempFile); } catch {}
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 80 * (attempt + 1)));
+      }
+    }
+    throw lastError;
   });
   return saveQueue;
+}
+
+function cloneTasks() {
+  return tasks.map(task => ({ ...task }));
+}
+
+async function saveWithRollback(snapshot) {
+  try {
+    await save();
+  } catch (error) {
+    tasks = snapshot;
+    throw error;
+  }
 }
 
 function archiveExpiredDoneTasks(now = Date.now()) {
@@ -128,13 +157,27 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (url.pathname === '/api/tasks' && req.method === 'POST') {
+        const snapshot = cloneTasks();
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
         const defaults = DEFAULT_WEIGHTS[q];
         const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
-        tasks.push(t); await save(); return json(201, t);
+        tasks.push(t); await saveWithRollback(snapshot); return json(201, t);
+      }
+
+      if (url.pathname === '/api/demo/restore' && req.method === 'POST') {
+        const snapshot = cloneTasks();
+        const fixture = JSON.parse(await readFile(DEMO_DATA_FILE, 'utf8'));
+        if (!Array.isArray(fixture)) throw new Error('demo fixture must contain an array');
+        const restored = fixture
+          .filter(task => String(task.id).startsWith('demo-'))
+          .map(task => ({ ...task }));
+        tasks = restored;
+        await saveWithRollback(snapshot);
+        return json(200, { ok: true, restored: restored.length, tasks: cloneTasks() });
       }
 
       if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('done') === 'true') {
+        const snapshot = cloneTasks();
         let archived = 0;
         tasks.forEach(task => {
           if (task.done && !task.archived) {
@@ -143,8 +186,17 @@ const server = http.createServer(async (req, res) => {
             archived += 1;
           }
         });
-        if (archived) await save();
+        if (archived) await saveWithRollback(snapshot);
         return json(200, { ok: true, archived });
+      }
+
+      if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('archived') === 'true') {
+        const snapshot = cloneTasks();
+        const before = tasks.length;
+        tasks = tasks.filter(task => !(task.done === true && task.archived === true));
+        const deleted = before - tasks.length;
+        if (deleted) await saveWithRollback(snapshot);
+        return json(200, { ok: true, deleted });
       }
 
       const m = url.pathname.match(/^\/api\/tasks\/([\w-]+)$/);
@@ -152,6 +204,7 @@ const server = http.createServer(async (req, res) => {
         const t = tasks.find(x => x.id === m[1]);
         if (!t) return json(404, { error: 'not found' });
         if (req.method === 'PATCH') {
+          const snapshot = cloneTasks();
           const nextDone = 'done' in body ? !!body.done : t.done === true;
           if ('archived' in body && body.archived && !nextDone) {
             return json(409, { error: 'only completed tasks can be archived' });
@@ -188,9 +241,14 @@ const server = http.createServer(async (req, res) => {
             same.forEach((x, i) => x.order = i);
           }
           const archivedOverflowIds = t.done && !t.archived ? archiveDoneOverflow() : [];
-          await save(); return json(200, { ...t, archivedOverflowIds });
+          await saveWithRollback(snapshot); return json(200, { ...t, archivedOverflowIds });
         }
-        if (req.method === 'DELETE') { tasks = tasks.filter(x => x.id !== m[1]); await save(); return json(200, { ok: true }); }
+        if (req.method === 'DELETE') {
+          const snapshot = cloneTasks();
+          tasks = tasks.filter(x => x.id !== m[1]);
+          await saveWithRollback(snapshot);
+          return json(200, { ok: true });
+        }
       }
       return json(404, { error: 'no route' });
     }
