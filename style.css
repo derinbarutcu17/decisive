@@ -138,6 +138,32 @@ button, input, textarea, select { font: inherit; }
   font-weight: 600;
   letter-spacing: -.01em;
 }
+.github-link {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: var(--ink);
+  border-radius: 6px;
+  -webkit-app-region: no-drag;
+  transition: color .16s ease, opacity .16s ease, transform .16s ease;
+}
+.github-link svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.github-link:hover {
+  color: #fff;
+  transform: translateY(-1px);
+}
+.github-link:focus-visible {
+  outline: 2px solid var(--focus-neutral);
+  outline-offset: 2px;
+}
 .header-actions {
   position: static;
   grid-column: 3;
@@ -1684,7 +1710,9 @@ button, input, textarea, select { font: inherit; }
     width: max-content;
     max-width: 100%;
     margin-inline: 0 auto;
+    gap: 10px;
   }
+  .github-link { display: inline-flex; }
   .header-actions {
     position: static;
     flex-wrap: wrap;
