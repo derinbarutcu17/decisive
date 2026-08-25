@@ -147,7 +147,12 @@ function previewMutationFallback(method, path, body = {}) {
 }
 
 async function api(method, path, body) {
-  const retryable = ['GET', 'PATCH', 'DELETE'].includes(method) || (method === 'POST' && path === '/api/demo/restore');
+  if (method !== 'GET') {
+    // Vercel functions are stateless, so preview mutations must stay local.
+    const previewFallback = previewMutationFallback(method, path, body);
+    if (previewFallback !== null) return previewFallback;
+  }
+  const retryable = ['GET', 'DELETE'].includes(method) || (method === 'POST' && path === '/api/demo/restore');
   let lastError = new Error('offline');
   for (let attempt = 0; attempt < (retryable ? 3 : 1); attempt += 1) {
     try {
@@ -346,6 +351,7 @@ async function undoEliminate() {
     render();
     const restored = cardIn(recovery.taskId);
     if (restored) settleCard(restored);
+    showSaveSuccess();
   } catch {
     if (button) button.disabled = false;
     showSaveError();
@@ -1459,6 +1465,7 @@ async function moveTaskToEliminate(li, t) {
     showEliminateRecovery(t.id, previous);
     const moved = cardIn(t.id);
     if (moved) settleCard(moved);
+    showSaveSuccess();
   } catch {
     showSaveError();
   } finally {

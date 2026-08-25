@@ -87,9 +87,19 @@ try {
   const restored = await restoreResponse.json();
   assert(restoreResponse.ok && restored.restored > 0, 'demo restore should replace the board with built-in examples');
   assert(restored.tasks.every(task => String(task.id).startsWith('demo-')), 'demo restore must never import personal rows');
+  const bodylessRestoreResponse = await fetch(base + '/api/demo/restore', { method: 'POST' });
+  const bodylessRestored = await bodylessRestoreResponse.json();
+  assert(bodylessRestoreResponse.ok && bodylessRestored.restored === restored.restored, 'bodyless demo restore should succeed without a JSON body');
   const afterRestore = await (await fetch(base + '/api/tasks')).json();
   assert(afterRestore.length === restored.restored && afterRestore.every(task => String(task.id).startsWith('demo-')), 'demo restore must remove custom rows');
   assert(!afterRestore.some(task => task.id === created.id), 'demo restore must remove custom tasks');
+  for (const quadrant of ['do', 'schedule', 'delegate', 'eliminate']) {
+    assert(
+      afterRestore.some(task => task.quadrant === quadrant && task.done === false && task.archived === false),
+      `demo restore should leave active ${quadrant} content`,
+    );
+  }
+  assert(afterRestore.some(task => task.done === true && task.archived === false), 'demo restore should include visible done content');
   const restoredAgainResponse = await fetch(base + '/api/demo/restore', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

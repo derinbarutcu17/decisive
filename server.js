@@ -150,6 +150,18 @@ const server = http.createServer(async (req, res) => {
   const json = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   try {
     if (url.pathname.startsWith('/api/')) {
+      if (url.pathname === '/api/demo/restore' && req.method === 'POST') {
+        const snapshot = cloneTasks();
+        const fixture = JSON.parse(await readFile(DEMO_DATA_FILE, 'utf8'));
+        if (!Array.isArray(fixture)) throw new Error('demo fixture must contain an array');
+        const restored = fixture
+          .filter(task => String(task.id).startsWith('demo-'))
+          .map(task => ({ ...task }));
+        tasks = restored;
+        await saveWithRollback(snapshot);
+        return json(200, { ok: true, restored: restored.length, tasks: cloneTasks() });
+      }
+
       const body = (req.method === 'GET' || !req.headers['content-length']) ? {} : JSON.parse(await readBody(req));
       if (url.pathname === '/api/tasks' && req.method === 'GET') {
         await runRetentionSweep();
@@ -162,18 +174,6 @@ const server = http.createServer(async (req, res) => {
         const defaults = DEFAULT_WEIGHTS[q];
         const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
         tasks.push(t); await saveWithRollback(snapshot); return json(201, t);
-      }
-
-      if (url.pathname === '/api/demo/restore' && req.method === 'POST') {
-        const snapshot = cloneTasks();
-        const fixture = JSON.parse(await readFile(DEMO_DATA_FILE, 'utf8'));
-        if (!Array.isArray(fixture)) throw new Error('demo fixture must contain an array');
-        const restored = fixture
-          .filter(task => String(task.id).startsWith('demo-'))
-          .map(task => ({ ...task }));
-        tasks = restored;
-        await saveWithRollback(snapshot);
-        return json(200, { ok: true, restored: restored.length, tasks: cloneTasks() });
       }
 
       if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('done') === 'true') {
