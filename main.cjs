@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const PORT = Number(process.env.PORT || 4321);
 const DEV_DATA = path.join(__dirname, 'data.json');
+const LEGACY_DATA_DIR = 'eisenhower';
 let server = null;
 const stopServer = () => {
   if (!server) return;
@@ -20,9 +21,14 @@ const portUp = () => new Promise(resolve => {
 });
 
 app.whenReady().then(async () => {
-  const dataFile = app.isPackaged ? path.join(app.getPath('userData'), 'data.json') : path.join(__dirname, 'data.json');
+  const dataFile = app.isPackaged
+    ? path.join(app.getPath('appData'), LEGACY_DATA_DIR, 'data.json')
+    : path.join(__dirname, 'data.json');
   // first run of the packaged app: carry over history from the dev location
-  if (app.isPackaged && !fs.existsSync(dataFile) && fs.existsSync(DEV_DATA)) fs.copyFileSync(DEV_DATA, dataFile);
+  if (app.isPackaged && !fs.existsSync(dataFile)) {
+    fs.mkdirSync(path.dirname(dataFile), { recursive: true });
+    if (fs.existsSync(DEV_DATA)) fs.copyFileSync(DEV_DATA, dataFile);
+  }
   if (!(await portUp())) {
     server = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', DATA_FILE: dataFile },
@@ -33,8 +39,11 @@ app.whenReady().then(async () => {
   const win = new BrowserWindow({
     width: 1200,
     height: 840,
-    minWidth: 920,
-    minHeight: 640,
+    // Keep the three-column desktop matrix in a usable range. Below this
+    // width the browser layout switches to its compact 2×2 priority grid,
+    // but the native app should not normally reach that recovery mode.
+    minWidth: 1080,
+    minHeight: 720,
     title: '',
     backgroundColor: '#0b0b0b',
     titleBarStyle: 'hiddenInset',

@@ -5,26 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisive</title>
 <script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=31">
 </head>
 <body>
 <div id="phone-shell">
 <div id="console" data-app="decisive">
 <header class="app-identity" aria-label="Decisive">
-  <img class="app-mark" src="decisive-mark.png?v=3" alt="">
-  <span class="app-name">Decisive</span>
+  <div class="app-brand">
+    <img class="app-mark" src="decisive-mark.png?v=3" alt="">
+    <span class="app-name">Decisive</span>
+    <a class="github-link" href="https://github.com/derinbarutcu17/decisive" target="_blank" rel="noreferrer" aria-label="Open Decisive on GitHub" title="Open Decisive on GitHub">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.987 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 7.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.026 2.747-1.026.546 1.378.203 2.397.1 2.65.64.701 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.523 2 12 2Z" clip-rule="evenodd"/></svg>
+    </a>
+  </div>
+  <div class="header-actions">
+    <button type="button" class="scatter-names-button" id="scatter-names-button" aria-pressed="false" hidden>Show names</button>
+    <div class="view-switch" role="group" aria-label="Board view">
+      <span class="view-switch-pill" aria-hidden="true"></span>
+      <button type="button" class="view-button is-active" data-view="matrix" aria-pressed="true">Matrix</button>
+      <button type="button" class="view-button" data-view="scatter" aria-pressed="false">Scatter</button>
+      <button type="button" class="view-button archive-button" data-view="archive" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg><span>Archive</span></button>
+    </div>
+    <div class="settings-wrap">
+      <button type="button" class="settings-toggle" id="settings-toggle" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings-panel" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <div class="settings-panel" id="settings-panel" role="dialog" aria-labelledby="settings-title" hidden>
+        <h2 id="settings-title">Settings</h2>
+        <label class="settings-option" for="ascii-background-toggle">
+          <span>ASCII background</span>
+          <input id="ascii-background-toggle" type="checkbox" role="switch" checked>
+        </label>
+        <label class="settings-option" for="original-layout-toggle">
+          <span>Original layout</span>
+          <input id="original-layout-toggle" type="checkbox" role="switch">
+        </label>
+        <div class="settings-divider" aria-hidden="true"></div>
+        <button type="button" class="settings-action" id="restore-demo-content">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg>
+          <span>Restore demo content</span>
+        </button>
+        <p class="settings-help settings-demo-help">Replaces this board with the built-in demo examples. Current tasks will be removed.</p>
+        <p class="settings-help">Turn off the background to reduce motion and processing.</p>
+      </div>
+    </div>
+  </div>
 </header>
 <section class="capture-panel" aria-label="Task capture">
   <div class="capture-control">
     <input id="quick-add" type="text" placeholder="Type a task and press Enter…" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" inputmode="text" aria-label="Add a task">
     <span class="enter-key">Enter <svg class="enter-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Do</span>
   </div>
+  <p class="app-status" id="app-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
 </section>
 <div id="layout">
 <aside class="quadrant done-section" id="done">
-  <h2><span class="dot"></span><span class="quadrant-name">Done</span><small>archive / completed</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+  <h2><span class="dot"></span><span class="quadrant-name">Done</span><small>completed</small><span class="count" aria-live="polite" aria-atomic="true">0</span><span class="done-delete-actions"><button type="button" class="done-delete" id="done-delete" aria-label="Archive all completed tasks" title="Archive all completed tasks" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg></button><span class="delete-actions" id="done-delete-confirm" hidden><button type="button" class="delete-cancel" aria-label="Cancel archive all completed tasks" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><button type="button" class="delete-approve" aria-label="Confirm archive all completed tasks" title="Archive completed tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></span></span></h2>
   <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
 </aside>
+<section class="quadrant eliminate-section" data-quadrant="eliminate">
+  <h2><span class="dot"></span><span class="quadrant-name">Eliminate</span><small>neither</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
+  <p class="eliminate-drop-copy" aria-hidden="true">Release to eliminate</p>
+  <div class="eliminate-recovery" id="eliminate-recovery" role="status" aria-live="polite" hidden>
+    <span class="eliminate-recovery-message"></span>
+    <button type="button" class="eliminate-undo">Undo</button>
+  </div>
+  <div class="cards-frame"><ul class="cards"><li class="empty eliminate-empty"><strong>Nothing to eliminate</strong><span>Drop low-value work here when you’re ready to remove it.</span></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+</section>
 <main id="matrix" aria-label="Task matrix">
   <section class="quadrant" data-quadrant="do">
     <h2><span class="dot"></span><span class="quadrant-name">Do</span><small>urgent + important</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
@@ -38,15 +85,57 @@
     <h2><span class="dot"></span><span class="quadrant-name">Delegate</span><small>urgent, not important</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
     <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
   </section>
-  <section class="quadrant" data-quadrant="eliminate">
-    <h2><span class="dot"></span><span class="quadrant-name">Eliminate</span><small>neither</small><span class="count" aria-live="polite" aria-atomic="true">0</span></h2>
-    <div class="cards-frame"><ul class="cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
-  </section>
 </main>
+<section id="scatter-view" class="scatter-view" aria-label="Scatter plot view" hidden>
+  <div class="scatter-layout">
+    <div class="scatter-chart-shell">
+      <div class="scatter-axis scatter-axis-y" aria-hidden="true">
+        <span>Important</span>
+        <strong>Importance</strong>
+        <span>Not important</span>
+      </div>
+      <div class="scatter-plot" id="scatter-plot" role="region" aria-label="Task scatter plot" aria-describedby="scatter-description">
+        <p id="scatter-description" class="sr-only">Importance increases from bottom to top and urgency increases from right to left. Do is the top-left quadrant, Schedule is top-right, Delegate is bottom-left, and Eliminate is bottom-right. Tasks can only be placed on the visible grid intersections.</p>
+        <div class="scatter-zones">
+          <div class="scatter-zone zone-delegate" role="group" aria-label="Delegate: low importance, high urgency"><span class="scatter-zone-label" aria-hidden="true">Delegate</span></div>
+          <div class="scatter-zone zone-do" role="group" aria-label="Do: high importance, high urgency"><span class="scatter-zone-label" aria-hidden="true">Do</span></div>
+          <div class="scatter-zone zone-eliminate" role="group" aria-label="Eliminate: low importance, low urgency"><span class="scatter-zone-label" aria-hidden="true">Eliminate</span></div>
+          <div class="scatter-zone zone-schedule" role="group" aria-label="Schedule: high importance, low urgency"><span class="scatter-zone-label" aria-hidden="true">Schedule</span></div>
+        </div>
+        <div class="scatter-grid" id="scatter-grid" aria-hidden="true"></div>
+        <div class="scatter-tasks" id="scatter-tasks" role="list" aria-label="Active tasks on the scatter plot"></div>
+        <p class="scatter-empty" id="scatter-empty" hidden>No active tasks yet.</p>
+      </div>
+      <div class="scatter-axis scatter-axis-x" aria-hidden="true">
+        <span>Urgent</span>
+        <strong>Urgency</strong>
+        <span>Not urgent</span>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="archive-view" class="archive-view" aria-labelledby="archive-title" hidden>
+  <div class="archive-heading">
+    <div>
+      <h1 id="archive-title">Archive <span id="archive-count" aria-live="polite">0</span></h1>
+    </div>
+    <div class="archive-delete-actions" aria-label="Archive actions">
+      <button type="button" class="archive-delete" id="archive-delete" aria-label="Delete all archived tasks" title="Delete all archived tasks" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7l1-3h4l1 3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+      </button>
+      <span class="delete-actions" id="archive-delete-confirm" hidden>
+        <button type="button" class="delete-cancel" aria-label="Cancel delete all archived tasks" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <button type="button" class="delete-approve" aria-label="Confirm delete all archived tasks" title="Delete all archived tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button>
+      </span>
+    </div>
+  </div>
+  <div class="cards-frame archive-cards-frame"><ul class="cards archive-cards"><li class="empty" aria-hidden="true"></li></ul><div class="cards-fade" aria-hidden="true"></div></div>
+</section>
 </div>
 </div>
 </div>
-<script type="module" src="ascii-background.js"></script>
-<script src="app.js"></script>
+<script type="module" src="ascii-background.js?v=2"></script>
+<script src="app.js?v=28"></script>
+<script src="metal-shader.js?v=1"></script>
 </body>
 </html>

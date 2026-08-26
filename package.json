@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/api.test.mjs",
+    "test": "node test/api.test.mjs && node test/vercel-config.test.mjs",
     "app": "electron .",
     "capture:readme": "electron scripts/capture-readme-shots.cjs",
     "dist": "electron-builder --mac dir"
@@ -18,10 +18,12 @@
     "files": [
       "main.cjs",
       "server.js",
+      "examples/demo-data.json",
       "index.html",
       "style.css",
       "app.js",
       "ascii-background.js",
+      "metal-shader.js",
       "vendor/asciify-engine.js",
       "decisive-mark.png",
       "fonts/Inter-Variable.ttf"

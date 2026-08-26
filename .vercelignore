@@ -1,0 +1,5 @@
+# Keep the author's local task history out of the public web preview.
+data.json
+dist/
+node_modules/
+.DS_Store

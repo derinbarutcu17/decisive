@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Decisive</h1>
   <p><strong>A local-first decision matrix for the work that matters.</strong></p>
-  <p>Capture a task, place it by consequence, and keep the next move visible — offline, private, and fast.</p>
+  <p>Capture a task, place it by consequence, and keep the next move visible — focused, private, and fast.</p>
 </div>
 
 ## The interface
@@ -23,6 +23,30 @@ Decisive turns the Eisenhower method into a focused workspace: one capture field
 - **Direct manipulation.** Drag tasks between quadrants, edit in place, mark complete, or delete with a deliberate two-step confirmation.
 - **Responsive on purpose.** The same UI adapts to a narrow iPhone-sized preview and a native macOS window.
 - **Animated, but considerate.** The ASCII background is tuned as atmosphere: it pauses when the app is hidden or unfocused and avoids stealing attention from the board.
+
+## Public web preview
+
+[Open the Decisive web preview](https://decisive-three.vercel.app/)
+
+The web preview exists so people can experience Decisive’s layout, visual language, and normal task interactions in a browser: capture a task, move it between quadrants, complete it, explore Scatter, and try the archive flow. It is a safe demo surface seeded with design-product work and is not the canonical task store. Browser preview changes are session-scoped and may reset when the preview sleeps or redeploys.
+
+Persistent saveability, offline use, and continuity of tasks across restarts are available in the native macOS app below.
+
+## Download the macOS app
+
+[Download the latest Decisive macOS release](https://github.com/derinbarutcu17/decisive/releases/latest)
+
+The macOS app is the canonical Decisive experience. It keeps task history locally in macOS Application Support, works offline, and preserves your data when the app is closed or updated.
+
+Releases are currently unsigned because Decisive is not enrolled in the Apple Developer Program. On first launch, macOS may show a security warning:
+
+1. Download the latest `.dmg` or `.zip` from the release page and move **Decisive** to `Applications`.
+2. If macOS blocks the first launch, open **System Settings → Privacy & Security**.
+3. Find the message that Decisive was blocked and choose **Open Anyway**, then confirm the prompt. You can also Control-click the app in `Applications`, choose **Open**, and confirm once.
+
+Do not disable Gatekeeper globally. Only approve the copy downloaded from the official Decisive release page.
+
+New tagged releases are packaged automatically by [`.github/workflows/release.yml`](.github/workflows/release.yml) and published to GitHub Releases.
 
 ## Run it locally
 

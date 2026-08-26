@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,22 +7,132 @@ import { exec } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
+const DEMO_DATA_FILE = path.join(__dirname, 'examples', 'demo-data.json');
 const PORT = process.env.PORT || 4321;
 const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'];
+const SNAP_POINTS = Array.from({ length: 21 }, (_, index) => index * 5);
+const DEFAULT_WEIGHTS = {
+  do: { importance: 75, urgency: 75 },
+  schedule: { importance: 75, urgency: 25 },
+  delegate: { importance: 25, urgency: 75 },
+  eliminate: { importance: 25, urgency: 25 },
+};
+const DONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const DONE_VISIBLE_LIMIT = 10;
 
 let tasks = [];
+let saveQueue = Promise.resolve();
+
+function weight(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const clamped = Math.max(0, Math.min(100, n));
+  return SNAP_POINTS.reduce((closest, point) => Math.abs(point - clamped) < Math.abs(closest - clamped) ? point : closest, SNAP_POINTS[0]);
+}
+
+function applyDefaultWeights(task) {
+  const defaults = DEFAULT_WEIGHTS[task.quadrant] || DEFAULT_WEIGHTS.do;
+  task.importance = weight(task.importance, defaults.importance);
+  task.urgency = weight(task.urgency, defaults.urgency);
+  return task;
+}
 
 async function load() {
   try {
     tasks = JSON.parse(await readFile(DATA_FILE, 'utf8'));
     if (!Array.isArray(tasks)) throw new Error('data file must contain an array');
+    let changed = false;
+    tasks.forEach(task => {
+      const before = String(task.importance) + ':' + String(task.urgency);
+      applyDefaultWeights(task);
+      changed ||= before !== String(task.importance) + ':' + String(task.urgency);
+      if (typeof task.archived !== 'boolean') {
+        task.archived = false;
+        changed = true;
+      }
+      if (task.archived && task.done !== true) {
+        task.archived = false;
+        task.archivedAt = null;
+        changed = true;
+      }
+    });
+    const archived = archiveExpiredDoneTasks();
+    const archivedOverflow = archiveDoneOverflow();
+    if (changed || archived || archivedOverflow.length) await save();
   } catch (e) {
     if (e.code !== 'ENOENT') throw e;
     tasks = [];
     await save();
   }
 }
-async function save() { await writeFile(DATA_FILE, JSON.stringify(tasks, null, 2)); }
+function save() {
+  saveQueue = saveQueue.catch(() => {}).then(async () => {
+    // Snapshot at the point the queued write begins. This prevents an older
+    // request from overwriting a newer change when several interactions land
+    // in the same event loop turn.
+    const payload = JSON.stringify(tasks, null, 2);
+    await mkdir(path.dirname(DATA_FILE), { recursive: true });
+    const tempFile = `${DATA_FILE}.${process.pid}.${randomUUID()}.tmp`;
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await writeFile(tempFile, payload, 'utf8');
+        await rename(tempFile, DATA_FILE);
+        return;
+      } catch (error) {
+        lastError = error;
+        try { await unlink(tempFile); } catch {}
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 80 * (attempt + 1)));
+      }
+    }
+    throw lastError;
+  });
+  return saveQueue;
+}
+
+function cloneTasks() {
+  return tasks.map(task => ({ ...task }));
+}
+
+async function saveWithRollback(snapshot) {
+  try {
+    await save();
+  } catch (error) {
+    tasks = snapshot;
+    throw error;
+  }
+}
+
+function archiveExpiredDoneTasks(now = Date.now()) {
+  const cutoff = now - DONE_RETENTION_MS;
+  let archived = 0;
+  tasks.forEach(task => {
+    if (task.done !== true || task.archived === true || typeof task.doneAt !== 'string') return;
+    const doneAt = Date.parse(task.doneAt);
+    if (Number.isFinite(doneAt) && doneAt < cutoff) {
+      task.archived = true;
+      task.archivedAt = task.archivedAt || new Date(now).toISOString();
+      archived += 1;
+    }
+  });
+  return archived;
+}
+
+function archiveDoneOverflow(now = Date.now()) {
+  const visible = tasks
+    .filter(task => task.done === true && task.archived !== true)
+    .sort((a, b) => Date.parse(b.doneAt || '') - Date.parse(a.doneAt || ''));
+  const overflow = visible.slice(DONE_VISIBLE_LIMIT);
+  overflow.forEach(task => {
+    task.archived = true;
+    task.archivedAt = task.archivedAt || new Date(now).toISOString();
+  });
+  return overflow.map(task => task.id);
+}
+
+async function runRetentionSweep() {
+  if (archiveExpiredDoneTasks() > 0) await save();
+}
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -40,13 +150,53 @@ const server = http.createServer(async (req, res) => {
   const json = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
   try {
     if (url.pathname.startsWith('/api/')) {
+      if (url.pathname === '/api/demo/restore' && req.method === 'POST') {
+        const snapshot = cloneTasks();
+        const fixture = JSON.parse(await readFile(DEMO_DATA_FILE, 'utf8'));
+        if (!Array.isArray(fixture)) throw new Error('demo fixture must contain an array');
+        const restored = fixture
+          .filter(task => String(task.id).startsWith('demo-'))
+          .map(task => ({ ...task }));
+        tasks = restored;
+        await saveWithRollback(snapshot);
+        return json(200, { ok: true, restored: restored.length, tasks: cloneTasks() });
+      }
+
       const body = (req.method === 'GET' || !req.headers['content-length']) ? {} : JSON.parse(await readBody(req));
-      if (url.pathname === '/api/tasks' && req.method === 'GET') return json(200, tasks);
+      if (url.pathname === '/api/tasks' && req.method === 'GET') {
+        await runRetentionSweep();
+        return json(200, tasks);
+      }
 
       if (url.pathname === '/api/tasks' && req.method === 'POST') {
+        const snapshot = cloneTasks();
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
-        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q).length, done: false, doneAt: null };
-        tasks.push(t); await save(); return json(201, t);
+        const defaults = DEFAULT_WEIGHTS[q];
+        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
+        tasks.push(t); await saveWithRollback(snapshot); return json(201, t);
+      }
+
+      if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('done') === 'true') {
+        const snapshot = cloneTasks();
+        let archived = 0;
+        tasks.forEach(task => {
+          if (task.done && !task.archived) {
+            task.archived = true;
+            task.archivedAt = task.archivedAt || new Date().toISOString();
+            archived += 1;
+          }
+        });
+        if (archived) await saveWithRollback(snapshot);
+        return json(200, { ok: true, archived });
+      }
+
+      if (url.pathname === '/api/tasks' && req.method === 'DELETE' && url.searchParams.get('archived') === 'true') {
+        const snapshot = cloneTasks();
+        const before = tasks.length;
+        tasks = tasks.filter(task => !(task.done === true && task.archived === true));
+        const deleted = before - tasks.length;
+        if (deleted) await saveWithRollback(snapshot);
+        return json(200, { ok: true, deleted });
       }
 
       const m = url.pathname.match(/^\/api\/tasks\/([\w-]+)$/);
@@ -54,24 +204,51 @@ const server = http.createServer(async (req, res) => {
         const t = tasks.find(x => x.id === m[1]);
         if (!t) return json(404, { error: 'not found' });
         if (req.method === 'PATCH') {
+          const snapshot = cloneTasks();
+          const nextDone = 'done' in body ? !!body.done : t.done === true;
+          if ('archived' in body && body.archived && !nextDone) {
+            return json(409, { error: 'only completed tasks can be archived' });
+          }
           if ('title' in body) t.title = String(body.title);
           if ('note' in body) t.note = String(body.note);
-          if ('done' in body) { t.done = !!body.done; t.doneAt = t.done ? new Date().toISOString() : null; }
+          if ('quadrant' in body && !QUADRANTS.includes(body.quadrant)) return json(400, { error: 'invalid quadrant' });
+          const defaults = DEFAULT_WEIGHTS[t.quadrant] || DEFAULT_WEIGHTS.do;
+          if ('importance' in body) t.importance = weight(body.importance, defaults.importance);
+          if ('urgency' in body) t.urgency = weight(body.urgency, defaults.urgency);
+          if ('done' in body) {
+            t.done = !!body.done;
+            t.doneAt = t.done ? (t.doneAt || new Date().toISOString()) : null;
+            if (!t.done) {
+              t.archived = false;
+              t.archivedAt = null;
+            }
+          }
+          if ('archived' in body) {
+            t.archived = !!body.archived;
+            t.archivedAt = t.archived ? (t.archivedAt || new Date().toISOString()) : null;
+          }
           const moving = 'quadrant' in body && body.quadrant !== t.quadrant;
           if (moving || 'order' in body) {
             if (moving) {
-              const old = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
+              const old = tasks.filter(x => x.quadrant === t.quadrant && !x.done && !x.archived && x.id !== t.id).sort((a, b) => a.order - b.order);
               old.forEach((x, i) => x.order = i);
               t.quadrant = QUADRANTS.includes(body.quadrant) ? body.quadrant : t.quadrant;
+              if (!('importance' in body) && !('urgency' in body)) applyDefaultWeights(t);
             }
-            const same = tasks.filter(x => x.quadrant === t.quadrant && x.id !== t.id).sort((a, b) => a.order - b.order);
+            const same = tasks.filter(x => x.quadrant === t.quadrant && !x.done && !x.archived && x.id !== t.id).sort((a, b) => a.order - b.order);
             const idx = Math.min(Number(body.order ?? same.length), same.length);
             same.splice(idx, 0, t);
             same.forEach((x, i) => x.order = i);
           }
-          await save(); return json(200, t);
+          const archivedOverflowIds = t.done && !t.archived ? archiveDoneOverflow() : [];
+          await saveWithRollback(snapshot); return json(200, { ...t, archivedOverflowIds });
         }
-        if (req.method === 'DELETE') { tasks = tasks.filter(x => x.id !== m[1]); await save(); return json(200, { ok: true }); }
+        if (req.method === 'DELETE') {
+          const snapshot = cloneTasks();
+          tasks = tasks.filter(x => x.id !== m[1]);
+          await saveWithRollback(snapshot);
+          return json(200, { ok: true });
+        }
       }
       return json(404, { error: 'no route' });
     }
@@ -91,6 +268,8 @@ const server = http.createServer(async (req, res) => {
 load().then(() => {
   server.listen(PORT, () => {
     console.log(`Decisive on http://localhost:${PORT} (data: ${DATA_FILE})`);
+    const retentionTimer = setInterval(() => { void runRetentionSweep(); }, 60 * 60 * 1000);
+    retentionTimer.unref?.();
     if (process.platform === 'darwin' && !process.env.DATA_FILE) exec(`open http://localhost:${PORT}`);
   });
 }).catch(error => {

@@ -2,6 +2,37 @@
 
 Decisive bundles a small number of third-party assets and runtime code:
 
+## Metal-FX
+
+The animated liquid-metal surface on the "Enter → Do" control is powered by
+Metal-FX, copyright (c) 2026 Jakub Antalik, and is licensed under the MIT
+License:
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in
+> all copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+> THE SOFTWARE.
+
+`metal-shader.js` contains the Metal-FX plasma fragment shader and "silver"
+dark preset parameters (copied from metal-fx v1.0.4) with small Decisive-only
+additions: a ring mask matching the control shape, a reduced-motion freeze,
+and a gentle pointer/focus response. The source project is
+<https://github.com/Jakubantalik/metal-fx> and the live reference is
+<https://metal.jakubantalik.com/>.
+
 ## Inter
 
 The bundled `fonts/Inter-Variable.ttf` font is from the Inter project and is

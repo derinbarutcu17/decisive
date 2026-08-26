@@ -3,9 +3,10 @@ import { renderNoiseBackground } from "./vendor/asciify-engine.js";
 const consoleElement = document.querySelector("#console");
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const frameInterval = 1000 / 15;
+const preferenceKey = "decisive.asciiBackgroundEnabled";
 const renderOptions = {
-  color: "#707070",
-  accentColor: "#a2a2a2",
+  color: "#a0a0a0",
+  accentColor: "#d2d2d2",
   chars: " .,:;+=xX#%@",
   fontSize: 16,
   octaves: 2,
@@ -16,15 +17,20 @@ const renderOptions = {
 };
 
 let stopBackground = () => {};
+let backgroundEnabled = true;
+
+try {
+  backgroundEnabled = localStorage.getItem(preferenceKey) !== "false";
+} catch {}
 
 const mountBackground = () => {
   stopBackground();
 
-  if (!consoleElement || reducedMotion.matches) return;
+  if (!consoleElement || !backgroundEnabled || reducedMotion.matches) return;
 
   const canvas = document.createElement("canvas");
   canvas.className = "ascii-canvas";
-  canvas.style.opacity = "0.28";
+  canvas.style.opacity = "0.36";
   consoleElement.prepend(canvas);
 
   const context = canvas.getContext("2d", {
@@ -117,8 +123,14 @@ const mountBackground = () => {
 };
 
 mountBackground();
+const handlePreferenceChange = (event) => {
+  backgroundEnabled = event.detail?.enabled !== false;
+  mountBackground();
+};
+window.addEventListener("decisive:ascii-background", handlePreferenceChange);
 reducedMotion.addEventListener("change", mountBackground);
 window.addEventListener("pagehide", () => {
   stopBackground();
+  window.removeEventListener("decisive:ascii-background", handlePreferenceChange);
   reducedMotion.removeEventListener("change", mountBackground);
 }, { once: true });
