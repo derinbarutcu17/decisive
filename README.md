@@ -4,10 +4,6 @@
   <p>Capture a task, place it by consequence, and keep the next move visible — offline, private, and fast.</p>
 </div>
 
-<p align="center">
-  <img src="docs/images/decisive-matrix-hero.png" alt="Minimal four-quadrant Decisive matrix graphic" width="100%" />
-</p>
-
 ## The interface
 
 Decisive turns the Eisenhower method into a focused workspace: one capture field, four consequence quadrants, a completed archive, and enough motion to make reclassification feel immediate without turning the board into a dashboard.
