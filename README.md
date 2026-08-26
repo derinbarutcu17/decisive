@@ -4,13 +4,19 @@
   <p>Capture a task, place it by consequence, and keep the next move visible — focused, private, and fast.</p>
 </div>
 
+<p align="center">
+  <video src="docs/media/decisive-demo.mp4" controls muted loop playsinline width="100%">
+    <a href="docs/media/decisive-demo.mp4">Watch the Decisive product demo</a>
+  </video>
+</p>
+
 ## The interface
 
 Decisive turns the Eisenhower method into a focused workspace: one capture field, four consequence quadrants, a completed archive, and enough motion to make reclassification feel immediate without turning the board into a dashboard.
 
 <table>
   <tr>
-    <td width="70%"><img src="docs/images/decisive-desktop.png" alt="Decisive desktop matrix" /></td>
+    <td width="70%"><img src="docs/images/decisive-hero.png" alt="Decisive scatter view and matrix interface" /></td>
     <td width="30%"><img src="docs/images/decisive-iphone.png" alt="Decisive iPhone preview" /></td>
   </tr>
 </table>
