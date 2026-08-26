@@ -271,31 +271,5 @@
     "archivedAt": "2026-08-14T13:25:27.335Z",
     "importance": 20,
     "urgency": 20
-  },
-  {
-    "id": "7ab6c22f-b101-4fef-90db-a2dd9afb301b",
-    "title": "yo",
-    "note": "",
-    "quadrant": "do",
-    "order": 0,
-    "done": false,
-    "doneAt": null,
-    "archived": false,
-    "archivedAt": null,
-    "importance": 75,
-    "urgency": 75
-  },
-  {
-    "id": "db580e46-75e0-435e-915f-78a04c89e0cd",
-    "title": "yo",
-    "note": "",
-    "quadrant": "schedule",
-    "order": 1,
-    "done": false,
-    "doneAt": null,
-    "archived": false,
-    "archivedAt": null,
-    "importance": 75,
-    "urgency": 75
   }
 ]
