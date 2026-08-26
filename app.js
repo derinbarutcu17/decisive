@@ -494,18 +494,27 @@ function scatterLabelWidth(dot, plotRect) {
   const maxWidth = dot.classList.contains('is-frontmost') ? 380 : 320;
   const plotWidth = plotRect ? Math.max(96, plotRect.width - SCATTER_LABEL_INSET * 2) : maxWidth;
   const widthLimit = Math.min(maxWidth, plotWidth);
-  // Use the rendered glyph width instead of a character-count estimate. The
-  // estimate over-sized short labels and left empty space inside the border.
-  const previousWidth = label.style.width;
-  const previousMaxWidth = label.style.maxWidth;
-  const previousWhiteSpace = label.style.whiteSpace;
-  label.style.width = 'max-content';
-  label.style.maxWidth = 'none';
-  label.style.whiteSpace = 'nowrap';
-  const intrinsicWidth = Math.ceil(label.getBoundingClientRect().width);
-  label.style.width = previousWidth;
-  label.style.maxWidth = previousMaxWidth;
-  label.style.whiteSpace = previousWhiteSpace;
+  // Measure in an isolated probe instead of mutating the positioned label.
+  // A positioned label can retain the previous solver width (or inherit a
+  // max-width during a concurrent render), which makes max-content resolve to
+  // the 320px cap in slower browsers. That inflated every label and made the
+  // collision solver nondeterministic. The probe has no transform, offsets, or
+  // parent constraints, so its width is always the actual single-line content
+  // width before the plot limit is applied.
+  const probe = label.cloneNode(true);
+  probe.classList.remove('is-positioned', 'is-measuring', 'is-reactive');
+  probe.style.setProperty('position', 'fixed', 'important');
+  probe.style.setProperty('left', '-10000px', 'important');
+  probe.style.setProperty('top', '-10000px', 'important');
+  probe.style.setProperty('width', 'max-content', 'important');
+  probe.style.setProperty('max-width', 'none', 'important');
+  probe.style.setProperty('min-width', '0', 'important');
+  probe.style.setProperty('white-space', 'nowrap', 'important');
+  probe.style.setProperty('transform', 'none', 'important');
+  probe.style.setProperty('visibility', 'hidden', 'important');
+  document.body.appendChild(probe);
+  const intrinsicWidth = Math.ceil(probe.getBoundingClientRect().width);
+  probe.remove();
   return Math.max(96, Math.min(widthLimit, intrinsicWidth));
 }
 
