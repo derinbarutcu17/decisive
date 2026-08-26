@@ -549,6 +549,23 @@ function scatterLabelRailPositions(plotRect, labelWidth, labelHeight) {
   return positions;
 }
 
+function scatterLabelFallbackSlots(plotRect, measurements, count) {
+  const maxWidth = Math.max(...[...measurements.values()].map(measurement => measurement.labelWidth), 96);
+  const maxHeight = Math.max(...[...measurements.values()].map(measurement => measurement.labelHeight), 34);
+  const columns = Math.max(1, Math.floor((plotRect.width - SCATTER_LABEL_INSET * 2 + SCATTER_LABEL_GAP) / (maxWidth + SCATTER_LABEL_GAP)));
+  const rows = Math.ceil(Math.max(count, 1) / columns);
+  const slots = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      slots.push({
+        left: plotRect.left + SCATTER_LABEL_INSET + column * (maxWidth + SCATTER_LABEL_GAP),
+        top: plotRect.top + SCATTER_LABEL_INSET + row * (maxHeight + SCATTER_LABEL_GAP),
+      });
+    }
+  }
+  return slots;
+}
+
 function measuredLabelRect(position, labelWidth, labelHeight, plotRect) {
   return {
     left: position.left,
@@ -955,6 +972,57 @@ function layoutScatterLabels({ activeId = null } = {}) {
     target.placement = best.placement;
     target.rect = best.measured;
     reactiveKeys.add(target.taskKey);
+  }
+
+  // If a sequence of responsive commits still leaves a collision, use a
+  // deterministic in-plot slot map as a final safety net. This branch is
+  // intentionally rare: normal layouts stay on the local tethered solver,
+  // while dense or heavily resized layouts get a guaranteed non-overlapping
+  // final geometry instead of exposing a stale overlap to the user.
+  const remainingCollision = commits.some((commit, index) => commits
+    .slice(index + 1)
+    .some(other => labelRectsOverlap(commit.rect, other.rect, SCATTER_LABEL_GAP)));
+  if (remainingCollision) {
+    const slots = scatterLabelFallbackSlots(plotRect, measurements, commits.length);
+    const assigned = new Set();
+    const fallbackCommits = [...commits].sort((a, b) => (
+      labelPriorityByKey.get(a.taskKey) - labelPriorityByKey.get(b.taskKey)
+        || domOrder.get(a.dot) - domOrder.get(b.dot)
+    ));
+    for (const commit of fallbackCommits) {
+      const measurement = measurements.get(commit.dot);
+      if (!measurement) continue;
+      const currentCenter = {
+        x: commit.rect.left + commit.rect.width / 2,
+        y: commit.rect.top + commit.rect.height / 2,
+      };
+      let bestSlot = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let index = 0; index < slots.length; index += 1) {
+        if (assigned.has(index)) continue;
+        const slot = slots[index];
+        const distance = Math.hypot(
+          slot.left + measurement.labelWidth / 2 - currentCenter.x,
+          slot.top + measurement.labelHeight / 2 - currentCenter.y,
+        );
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSlot = { index, slot };
+        }
+      }
+      if (!bestSlot) continue;
+      assigned.add(bestSlot.index);
+      commit.nextLeft = bestSlot.slot.left - measurement.dotRect.left;
+      commit.nextTop = bestSlot.slot.top - measurement.dotRect.top;
+      commit.placement = commit.placement || measurement.dot.dataset.tooltipPlacement;
+      commit.rect = measuredLabelRect(
+        bestSlot.slot,
+        measurement.labelWidth,
+        measurement.labelHeight,
+        plotRect,
+      );
+      reactiveKeys.add(commit.taskKey);
+    }
   }
 
   for (const commit of commits) {
