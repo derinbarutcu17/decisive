@@ -802,6 +802,9 @@ function layoutScatterLabels({ activeId = null } = {}) {
     else memory.collisionSince = 0;
     const collisionAge = memory.collisionSince ? now - memory.collisionSince : 0;
     const currentOverflow = current ? labelOverflow(current.measured, labelBounds, SCATTER_LABEL_INSET) : Number.POSITIVE_INFINITY;
+    const currentIsClear = current
+      ? obstacles.every(obstacle => !labelRectsOverlap(current.measured, obstacle, SCATTER_LABEL_GAP))
+      : false;
     const bestImprovement = currentScore > 0 && Number.isFinite(currentScore)
       ? (currentScore - best.score) / currentScore
       : 0;
@@ -809,6 +812,7 @@ function layoutScatterLabels({ activeId = null } = {}) {
     const anchorLocked = now < memory.lockedUntil && currentOverflow <= 12;
     const hysteresisHold = !active
       && current
+      && currentIsClear
       && (anchorLocked || (collisionAge < 100 && currentOverflow <= 12) || bestImprovement < SCATTER_LABEL_ANCHOR_SWITCH_MARGIN);
     if (hysteresisHold) best = current;
     if (best.placement !== previousPlacement) memory.lockedUntil = now + SCATTER_LABEL_ANCHOR_LOCK_MS;
