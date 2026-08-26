@@ -26,10 +26,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - name: Install dependencies
-        # Electron's postinstall downloads the binary used by the isolated
-        # browser verification suite. The package manifest explicitly allows
-        # only Electron's install script.
         run: npm ci
+      - name: Ensure Electron binary
+        # Electron 43 moved its download step out of npm lifecycle scripts.
+        # Keep this explicit so both the current and upgraded Electron package
+        # layouts work on clean GitHub-hosted runners.
+        run: |
+          if [ ! -e "$PWD/node_modules/electron/dist/electron" ] && [ ! -e "$PWD/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" ]; then
+            node node_modules/electron/install.js
+          fi
       - name: Configure Electron sandbox
         # Electron's Linux E2E runner requires the helper to retain the
         # ownership and setuid bit shipped in the Electron archive. Fresh
