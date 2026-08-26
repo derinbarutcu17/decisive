@@ -458,9 +458,11 @@ function scatterTooltipPlacement(position) {
   return vertical + '-' + horizontal;
 }
 
-// The hit target is 32px but the visible dot is 12px. A -5px rect gap leaves
-// the task tag about 5px from the visible dot instead of 21px from it.
-const SCATTER_LABEL_GAP = -5;
+// The hit target is 32px but the visible dot is 12px. A -5px tether gap leaves
+// the task tag about 5px from the visible dot instead of 21px from it. Keep
+// this separate from the positive clearance required between two labels.
+const SCATTER_LABEL_TETHER_GAP = -5;
+const SCATTER_LABEL_GAP = 4;
 const SCATTER_LABEL_ANCHOR = 10;
 const SCATTER_LABEL_INSET = 6;
 const SCATTER_LABEL_CANDIDATES = [
@@ -479,14 +481,14 @@ function labelCandidatePosition(dotRect, labelWidth, labelHeight, placement) {
   const centerX = dotRect.left + dotRect.width / 2;
   const centerY = dotRect.top + dotRect.height / 2;
   const positions = {
-    'below-center': { left: centerX - labelWidth / 2, top: dotRect.bottom + SCATTER_LABEL_GAP },
-    'above-center': { left: centerX - labelWidth / 2, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
-    'below-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_GAP },
-    'below-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_GAP },
-    'above-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
-    'above-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_GAP },
-    'left-center': { left: dotRect.left - labelWidth - SCATTER_LABEL_GAP, top: centerY - labelHeight / 2 },
-    'right-center': { left: dotRect.right + SCATTER_LABEL_GAP, top: centerY - labelHeight / 2 },
+    'below-center': { left: centerX - labelWidth / 2, top: dotRect.bottom + SCATTER_LABEL_TETHER_GAP },
+    'above-center': { left: centerX - labelWidth / 2, top: dotRect.top - labelHeight - SCATTER_LABEL_TETHER_GAP },
+    'below-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_TETHER_GAP },
+    'below-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.bottom + SCATTER_LABEL_TETHER_GAP },
+    'above-left': { left: dotRect.left - labelWidth + SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_TETHER_GAP },
+    'above-right': { left: dotRect.right - SCATTER_LABEL_ANCHOR, top: dotRect.top - labelHeight - SCATTER_LABEL_TETHER_GAP },
+    'left-center': { left: dotRect.left - labelWidth - SCATTER_LABEL_TETHER_GAP, top: centerY - labelHeight / 2 },
+    'right-center': { left: dotRect.right + SCATTER_LABEL_TETHER_GAP, top: centerY - labelHeight / 2 },
   };
   return positions[placement] || positions['below-center'];
 }
@@ -1032,7 +1034,7 @@ function layoutScatterLabelsOriginal() {
     if (!best) {
       const fallback = {
         left: Math.max(plotRect.left + SCATTER_LABEL_INSET, Math.min(dotRect.left, plotRect.right - labelWidth - SCATTER_LABEL_INSET)),
-        top: Math.max(plotRect.top + SCATTER_LABEL_INSET, Math.min(dotRect.bottom + SCATTER_LABEL_GAP, plotRect.bottom - labelHeight - SCATTER_LABEL_INSET)),
+        top: Math.max(plotRect.top + SCATTER_LABEL_INSET, Math.min(dotRect.bottom + SCATTER_LABEL_TETHER_GAP, plotRect.bottom - labelHeight - SCATTER_LABEL_INSET)),
       };
       best = { score: 2000, placement: previousPlacement || preferred, left: fallback.left, top: fallback.top };
     }
