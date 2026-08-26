@@ -29,12 +29,56 @@ app.whenReady().then(async () => {
       // Label geometry depends on the bundled Inter font. Do not solve using
       // fallback glyph widths and then audit those stale positions.
       if (document.fonts?.ready) await document.fonts.ready;
+      const overlap = (a, b, gap = 4) => !(a.right + gap <= b.left || a.left >= b.right + gap || a.bottom + gap <= b.top || a.top >= b.bottom + gap);
+      const geometrySnapshot = () => {
+        const dots = [...document.querySelectorAll('.scatter-task')];
+        const labels = dots.map(dot => {
+          const label = dot.querySelector('.scatter-task-label');
+          const rect = label?.getBoundingClientRect();
+          return { dot, label, rect };
+        });
+        const visibleLabels = labels.filter(item => item.label
+          && item.label.classList.contains('is-positioned')
+          && getComputedStyle(item.label).visibility === 'visible');
+        const pairs = [];
+        for (let i = 0; i < visibleLabels.length; i += 1) {
+          for (let j = i + 1; j < visibleLabels.length; j += 1) {
+            if (overlap(visibleLabels[i].rect, visibleLabels[j].rect)) pairs.push([i, j]);
+          }
+        }
+        const signature = visibleLabels.map(item => {
+          const rect = item.rect;
+          return [rect.left, rect.top, rect.right, rect.bottom]
+            .map(value => value.toFixed(3)).join(',');
+        }).join('|');
+        return {
+          taskCount: dots.length,
+          allPositioned: dots.length > 0 && visibleLabels.length === dots.length,
+          overlappingPairs: pairs.length,
+          signature,
+        };
+      };
+      const waitForStableGeometry = async (timeout = 5000) => {
+        const started = performance.now();
+        let previous = null;
+        let stableFrames = 0;
+        while (performance.now() - started < timeout) {
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          const snapshot = geometrySnapshot();
+          const stable = snapshot.allPositioned && snapshot.overlappingPairs === 0;
+          if (stable && snapshot.signature === previous) stableFrames += 1;
+          else stableFrames = 0;
+          previous = snapshot.signature;
+          if (stableFrames >= 2) return true;
+        }
+        return false;
+      };
       const namesSetting = document.querySelector('#scatter-names-button');
       if (namesSetting && namesSetting.getAttribute('aria-pressed') !== 'true') namesSetting.click();
       // Let the eased label transition settle before measuring final geometry.
       // The product intentionally allows long labels to escape the plot edge,
       // so the audit checks the documented escape budget rather than clipping.
-      await wait(700);
+      await waitForStableGeometry();
       const plot = document.querySelector('#scatter-plot').getBoundingClientRect();
       const labelEscape = 160;
       const dots = [...document.querySelectorAll('.scatter-task')];
@@ -44,7 +88,6 @@ app.whenReady().then(async () => {
         visible: getComputedStyle(dot.querySelector('.scatter-task-label')).visibility === 'visible',
         zIndex: Number(getComputedStyle(dot).zIndex) || 0,
       }));
-      const overlap = (a, b, gap = 4) => !(a.right + gap <= b.left || a.left >= b.right + gap || a.bottom + gap <= b.top || a.top >= b.bottom + gap);
       const visibleLabels = labels.filter(item => item.visible);
       const pairs = [];
       for (let i = 0; i < visibleLabels.length; i += 1) {
