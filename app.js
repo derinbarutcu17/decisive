@@ -849,6 +849,78 @@ function layoutScatterLabels({ activeId = null } = {}) {
     });
   }
 
+  // Responsive layout and eased dot motion can expose a collision after the
+  // local component has been solved. Repair only the colliding label, using
+  // the same bounded candidate ring, so unrelated labels keep their targets
+  // and the final committed geometry is deterministic across viewports.
+  const labelPriorityByKey = new Map(visibleDots.map(dot => [
+    dot.dataset.id,
+    labelPriority(dot, activeKey),
+  ]));
+  const maxRepairs = Math.max(visibleDots.length * 2, 1);
+  for (let repair = 0; repair < maxRepairs; repair += 1) {
+    let collision = null;
+    for (let i = 0; i < commits.length && !collision; i += 1) {
+      for (let j = i + 1; j < commits.length; j += 1) {
+        if (labelRectsOverlap(commits[i].rect, commits[j].rect, SCATTER_LABEL_GAP)) {
+          collision = [commits[i], commits[j]];
+          break;
+        }
+      }
+    }
+    if (!collision) break;
+
+    const [first, second] = collision;
+    const target = reactiveKeys.has(first.taskKey) && !reactiveKeys.has(second.taskKey)
+      ? first
+      : reactiveKeys.has(second.taskKey) && !reactiveKeys.has(first.taskKey)
+        ? second
+        : (labelPriorityByKey.get(first.taskKey) > labelPriorityByKey.get(second.taskKey) ? first : second);
+    const measurement = measurements.get(target.dot);
+    if (!measurement) break;
+    const obstacles = commits
+      .filter(commit => commit !== target && commit.rect)
+      .map(commit => commit.rect);
+    const scoredCandidates = labelCandidateSet(measurement).map(candidate => {
+      const measured = measuredLabelRect(
+        { left: candidate.left, top: candidate.top },
+        measurement.labelWidth,
+        measurement.labelHeight,
+        plotRect,
+      );
+      return {
+        ...candidate,
+        measured,
+        score: labelCandidateScore(
+          { ...candidate, measured },
+          obstacles,
+          target.rect,
+          target.placement,
+          labelBounds,
+        ),
+      };
+    });
+    const clearCandidates = scoredCandidates.filter(candidate => obstacles.every(obstacle => (
+      !labelRectsOverlap(candidate.measured, obstacle, SCATTER_LABEL_GAP)
+    )));
+    const candidates = clearCandidates.length ? clearCandidates : scoredCandidates;
+    const best = candidates.reduce((currentBest, candidate) => (
+      !currentBest || candidate.score < currentBest.score ? candidate : currentBest
+    ), null);
+    if (!best) break;
+
+    const nextLeft = best.left - measurement.dotRect.left;
+    const nextTop = best.top - measurement.dotRect.top;
+    const unchanged = Math.abs(nextLeft - target.nextLeft) <= 0.1
+      && Math.abs(nextTop - target.nextTop) <= 0.1;
+    if (unchanged) break;
+    target.nextLeft = nextLeft;
+    target.nextTop = nextTop;
+    target.placement = best.placement;
+    target.rect = best.measured;
+    reactiveKeys.add(target.taskKey);
+  }
+
   for (const commit of commits) {
     commit.label.classList.add('is-positioned');
     commit.label.classList.toggle('is-reactive', reactiveKeys.has(commit.taskKey));
