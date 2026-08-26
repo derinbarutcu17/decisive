@@ -881,7 +881,28 @@ function layoutScatterLabels({ activeId = null } = {}) {
     const obstacles = commits
       .filter(commit => commit !== target && commit.rect)
       .map(commit => commit.rect);
-    const scoredCandidates = labelCandidateSet(measurement).map(candidate => {
+    const repairCandidates = labelCandidateSet(measurement);
+    // The regular candidate ring is intentionally sparse for normal motion.
+    // When a responsive reflow leaves a collision behind, add exact separating
+    // positions derived from the blocking rectangles. This keeps the repair
+    // bounded and tethered while avoiding a case where every coarse ring
+    // position remains a few pixels inside a neighboring label.
+    for (const obstacle of obstacles) {
+      const currentRect = target.rect;
+      const horizontalOverlap = currentRect.left < obstacle.right + SCATTER_LABEL_GAP
+        && currentRect.right + SCATTER_LABEL_GAP > obstacle.left;
+      const verticalOverlap = currentRect.top < obstacle.bottom + SCATTER_LABEL_GAP
+        && currentRect.bottom + SCATTER_LABEL_GAP > obstacle.top;
+      if (horizontalOverlap && verticalOverlap) {
+        repairCandidates.push(
+          { placement: target.placement, left: obstacle.left - measurement.labelWidth - SCATTER_LABEL_GAP, top: currentRect.top },
+          { placement: target.placement, left: obstacle.right + SCATTER_LABEL_GAP, top: currentRect.top },
+          { placement: target.placement, left: currentRect.left, top: obstacle.top - measurement.labelHeight - SCATTER_LABEL_GAP },
+          { placement: target.placement, left: currentRect.left, top: obstacle.bottom + SCATTER_LABEL_GAP },
+        );
+      }
+    }
+    const scoredCandidates = repairCandidates.map(candidate => {
       const measured = measuredLabelRect(
         { left: candidate.left, top: candidate.top },
         measurement.labelWidth,
