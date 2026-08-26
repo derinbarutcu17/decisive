@@ -30,5 +30,15 @@ jobs:
         # browser verification suite. The package manifest explicitly allows
         # only Electron's install script.
         run: npm ci
+      - name: Configure Electron sandbox
+        # Electron's Linux E2E runner requires the helper to retain the
+        # ownership and setuid bit shipped in the Electron archive. Fresh
+        # npm installs on GitHub-hosted runners can lose those attributes.
+        if: runner.os == 'Linux'
+        run: |
+          sandbox_path="$PWD/node_modules/electron/dist/chrome-sandbox"
+          test -f "$sandbox_path"
+          sudo chown root:root "$sandbox_path"
+          sudo chmod 4755 "$sandbox_path"
       - name: Run full verification suite
         run: npm run verify
