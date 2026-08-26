@@ -66,7 +66,11 @@ const SCATTER_LABEL_ANCHOR_SWITCH_MARGIN = 0.2;
 const SCATTER_LABEL_ANCHOR_LOCK_MS = 120;
 const SCATTER_LABEL_OVERFLOW_WEIGHT = 10000;
 const SCATTER_LABEL_COLLISION_WEIGHT = 1000;
-const SCATTER_LABEL_GAP_WEIGHT = 100;
+// A small visual gap is part of the collision contract. Penalize candidates
+// that leave labels technically separate but still visually touching more
+// strongly than a small amount of movement, so dense clusters settle cleanly
+// instead of stopping a couple of pixels apart.
+const SCATTER_LABEL_GAP_WEIGHT = 6000;
 const SCATTER_LABEL_MOVEMENT_WEIGHT = 0.35;
 
 try {
@@ -615,7 +619,7 @@ function labelCandidateSet(measurement) {
   // diagonal/ring positions for dense clusters. This lets labels separate
   // without falling onto distant rails or making the whole plot reflow.
   const nudges = [{ x: 0, y: 0 }];
-  for (const radius of [SCATTER_LABEL_MAX_NUDGE, 24, 40, 64, 88]) {
+  for (const radius of [SCATTER_LABEL_MAX_NUDGE, 24, 40, 64, 88, 112]) {
     for (const x of [-radius, 0, radius]) {
       for (const y of [-radius, 0, radius]) {
         if (x || y) nudges.push({ x, y });
