@@ -141,8 +141,9 @@ check(
 );
 
 check(
-  'scatter labels use bounded local collision avoidance without a packing rail',
-  !/scatterLabelRailPositions/.test(layout.text)
+  'scatter labels use bounded local collision avoidance with a bounded rail fallback',
+  /scatterLabelRailPositions/.test(layout.text)
+    && /isRailFallback/.test(layout.text)
     && /labelRectsOverlap/.test(layout.text)
     && /SCATTER_LABEL_MAX_REACTIVE_COUNT/.test(layout.text)
     && /SCATTER_LABEL_MAX_REACTIVE_DEPTH/.test(layout.text)

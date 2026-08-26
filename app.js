@@ -904,6 +904,19 @@ function layoutScatterLabels({ activeId = null } = {}) {
         );
       }
     }
+    // A dense CI-sized plot can exhaust every local anchor even after the
+    // exact separating positions above have been tried. Reuse the bounded
+    // plot rails as a deterministic last-resort escape hatch; unlike a free
+    // packing layout, this still chooses the nearest clear slot to the dot
+    // and never leaves the label outside the documented escape budget.
+    for (const position of scatterLabelRailPositions(plotRect, measurement.labelWidth, measurement.labelHeight)) {
+      repairCandidates.push({
+        placement: target.placement,
+        left: position.left,
+        top: position.top,
+        isRailFallback: true,
+      });
+    }
     const scoredCandidates = repairCandidates.map(candidate => {
       const measured = measuredLabelRect(
         { left: candidate.left, top: candidate.top },
