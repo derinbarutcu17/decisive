@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="decisive-mark.png" alt="Decisive mark" width="92" />
   <h1>Decisive</h1>
   <p><strong>A local-first decision matrix for the work that matters.</strong></p>
   <p>Capture a task, place it by consequence, and keep the next move visible — offline, private, and fast.</p>
