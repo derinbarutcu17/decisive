@@ -84,11 +84,12 @@ That produces a desktop capture and a 390×844 iPhone preview in `docs/images/`.
 ## Verify it
 
 ```bash
-npm test
-npx electron test/scroll.test.cjs
+npm run verify
 ```
 
-The first command runs the API checks. The scroll test expects a Decisive server to be available on port `4321` and verifies the pinned bottom fade, gradient mask, and fixed matrix geometry. The UI smoke test can be run against a temporary fixture with `TEST_TASK_ID=<id> npx electron test/ui.test.cjs`.
+`npm test` remains the fast deterministic unit/static check. `npm run verify` also starts an isolated fixture server and runs the scatter, scroll, layout, label, and UI smoke suites against it. Personal task data is never used by verification.
+
+For a release, CI additionally checks the tag/version match and generates `dist/SHA256SUMS.txt` alongside the macOS artifacts.
 
 ## Project map
 

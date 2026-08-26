@@ -50,10 +50,10 @@ app.whenReady().then(async () => {
           archiveFrame: rect('#archive-view .archive-cards-frame'),
           archiveList: rect('#archive-view .archive-cards'),
         },
-        matrixPanels: [...document.querySelectorAll('#layout [data-quadrant], #done')].map(node => { const r = node.getBoundingClientRect(); return { id: node.id || node.dataset.quadrant, x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; }),
+        matrixPanels: [...document.querySelectorAll('#layout [data-quadrant]:not(.scatter-task), #done')].map(node => { const r = node.getBoundingClientRect(); return { id: node.id || node.dataset.quadrant, x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; }),
         matrixContract: (() => {
           const layout = document.querySelector('#layout')?.getBoundingClientRect();
-          const panels = [...document.querySelectorAll('#layout [data-quadrant], #done')]
+          const panels = [...document.querySelectorAll('#layout [data-quadrant]:not(.scatter-task), #done')]
             .map(node => ({ id: node.id || node.dataset.quadrant, rect: node.getBoundingClientRect() }));
           const overlaps = (a, b) => a.rect.left < b.rect.right - 1 && a.rect.right > b.rect.left + 1 && a.rect.top < b.rect.bottom - 1 && a.rect.bottom > b.rect.top + 1;
           return {

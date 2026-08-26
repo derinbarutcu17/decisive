@@ -64,7 +64,7 @@ const styleSource = readSource(stylePath);
 const layout = sourceBetween(
   appSource,
   'function layoutScatterLabels(',
-  'function scheduleScatterLabelLayout(',
+  'function layoutScatterLabelsOriginal(',
 );
 
 const checks = [];

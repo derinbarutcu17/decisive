@@ -611,13 +611,17 @@ function labelCandidateSet(measurement) {
     });
   }
 
-  const nudges = [
-    { x: 0, y: 0 },
-    { x: -SCATTER_LABEL_MAX_NUDGE, y: 0 },
-    { x: SCATTER_LABEL_MAX_NUDGE, y: 0 },
-    { x: 0, y: -SCATTER_LABEL_MAX_NUDGE },
-    { x: 0, y: SCATTER_LABEL_MAX_NUDGE },
-  ];
+  // Keep the first choices close to the dot, then offer a small set of
+  // diagonal/ring positions for dense clusters. This lets labels separate
+  // without falling onto distant rails or making the whole plot reflow.
+  const nudges = [{ x: 0, y: 0 }];
+  for (const radius of [SCATTER_LABEL_MAX_NUDGE, 24, 40, 64, 88]) {
+    for (const x of [-radius, 0, radius]) {
+      for (const y of [-radius, 0, radius]) {
+        if (x || y) nudges.push({ x, y });
+      }
+    }
+  }
   for (const placement of placements) {
     const base = labelCandidatePosition(dotRect, labelWidth, labelHeight, placement);
     for (const nudge of nudges) {
@@ -967,7 +971,7 @@ function scheduleScatterLabelLayout(activeId = null) {
   if (scatterLabelLayoutFrame) cancelAnimationFrame(scatterLabelLayoutFrame);
   scatterLabelLayoutFrame = requestAnimationFrame(() => {
     scatterLabelLayoutFrame = 0;
-    layoutScatterLabelsOriginal();
+    layoutScatterLabels(scatterLabelLayoutRequest);
   });
 }
 

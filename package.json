@@ -6,10 +6,15 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/api.test.mjs && node test/vercel-config.test.mjs",
+    "test": "npm run test:unit",
+    "test:unit": "node test/api.test.mjs && node test/vercel-config.test.mjs && node test/approved-scope-contract.cjs && node test/label-motion-regression.cjs",
+    "test:e2e": "node scripts/e2e.cjs",
+    "verify": "npm run test:unit && npm run test:e2e",
     "app": "electron .",
     "capture:readme": "electron scripts/capture-readme-shots.cjs",
-    "dist": "electron-builder --mac dir"
+    "dist": "electron-builder --mac dir",
+    "release:preflight": "node scripts/release-preflight.cjs",
+    "release:artifacts": "node scripts/release-preflight.cjs --artifacts"
   },
   "build": {
     "appId": "com.derin.eisenhower",
@@ -39,5 +44,8 @@
   },
   "dependencies": {
     "asciify-engine": "^1.0.118"
+  },
+  "allowScripts": {
+    "electron@37.10.3": true
   }
 }

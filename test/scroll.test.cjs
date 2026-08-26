@@ -47,7 +47,12 @@ app.whenReady().then(async () => {
         fadeUsesBlur: fadeStyles.backdropFilter !== 'none' || fadeStyles.webkitBackdropFilter !== 'none',
         fadeOutsideScrollList: fade.parentElement === frame,
         doneFrameCanUsePanelHeight: doneFrameStyles.flexGrow === '1' && doneFrameStyles.maxHeight === 'none',
-        rowsStaySeparated: lowerRect.top >= quadrantRect.bottom - 1,
+        // The current desktop layout intentionally lets Do span both grid
+        // rows. Separation therefore means the panels do not overlap in
+        // either axis, rather than requiring every panel to have a lower y.
+        rowsStaySeparated: lowerRect.right <= quadrantRect.left + 1
+          || lowerRect.left >= quadrantRect.right - 1
+          || lowerRect.top >= quadrantRect.bottom - 1,
       };
     })()`);
     const checks = [

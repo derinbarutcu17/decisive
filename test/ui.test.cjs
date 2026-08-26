@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
       ok('check is a button with aria-pressed', !!card && card.querySelector('.check')?.tagName === 'BUTTON' && card.querySelector('.check').hasAttribute('aria-pressed'));
       ok('content is keyboard focusable', !!card && card.querySelector('.content')?.getAttribute('tabindex') === '0' && card.querySelector('.content').getAttribute('role') === 'button');
       ok('quick-add has an accessible label', document.querySelector('#quick-add')?.getAttribute('aria-label') === 'Add a task');
-      ok('matrix has four active quadrants', document.querySelectorAll('#matrix .quadrant').length === 4);
+      ok('matrix has four active quadrants', document.querySelectorAll('#layout .quadrant[data-quadrant]').length === 4);
       ok('done archive is present', !!document.querySelector('#done.done-section'));
 
       // Click-to-edit is the only task editor surface.
@@ -53,7 +53,8 @@ app.whenReady().then(async () => {
       ok('confirm removes the task card', !document.querySelector(cardSel));
 
       const serverTasks = await (await fetch('/api/tasks')).json();
-      ok('server no longer has the deleted card', !serverTasks.some(task => task.id === ${JSON.stringify(id)}));
+      const archivedCard = serverTasks.find(task => task.id === ${JSON.stringify(id)});
+      ok('server archives the approved card', !!archivedCard && archivedCard.done === true && archivedCard.archived === true);
       return out;
     })()`);
   } catch (error) {

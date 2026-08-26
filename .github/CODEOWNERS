@@ -1,0 +1,22 @@
+# Decisive is maintained by @derinbarutcu17. Keep ownership explicit for
+# the local-data, Electron, release, and governance surfaces.
+
+* @derinbarutcu17
+
+# Security and community governance
+/SECURITY.md @derinbarutcu17
+/CONTRIBUTING.md @derinbarutcu17
+/CODE_OF_CONDUCT.md @derinbarutcu17
+/.github/CODEOWNERS @derinbarutcu17
+/.github/PULL_REQUEST_TEMPLATE.md @derinbarutcu17
+/.github/ISSUE_TEMPLATE/ @derinbarutcu17
+
+# Native shell, local persistence, and API
+/main.cjs @derinbarutcu17
+/server.js @derinbarutcu17
+/api/ @derinbarutcu17
+
+# Dependency and release configuration
+/package.json @derinbarutcu17
+/package-lock.json @derinbarutcu17
+/.github/workflows/ @derinbarutcu17
