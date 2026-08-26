@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const net = require('node:net');
-const os = require('node:os');
+const os = require('os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
@@ -62,7 +62,14 @@ async function main() {
     const command = process.platform === 'linux' && !process.env.DISPLAY && fs.existsSync('/usr/bin/xvfb-run')
       ? '/usr/bin/xvfb-run'
       : electron;
-    const args = command === electron ? [script] : ['-a', electron, script];
+    // GitHub's Linux runners install Electron as a regular user, so the
+    // downloaded chrome-sandbox helper does not have the root-owned SUID
+    // permissions Electron expects. These are isolated test processes, so
+    // disable Chromium's sandbox for Linux E2E verification.
+    const electronFlags = process.platform === 'linux' ? ['--no-sandbox'] : [];
+    const args = command === electron
+      ? [...electronFlags, script]
+      : ['-a', electron, ...electronFlags, script];
     return run(command, args, { TEST_URL: baseUrl, ...extraEnv });
   };
 
