@@ -971,6 +971,11 @@ function layoutScatterLabels({ activeId = null } = {}) {
     target.nextTop = nextTop;
     target.placement = best.placement;
     target.rect = best.measured;
+    scatterLabelPositions.set(target.taskKey, {
+      left: target.nextLeft,
+      top: target.nextTop,
+      placement: target.placement,
+    });
     reactiveKeys.add(target.taskKey);
   }
 
@@ -1021,6 +1026,11 @@ function layoutScatterLabels({ activeId = null } = {}) {
         measurement.labelHeight,
         plotRect,
       );
+      scatterLabelPositions.set(commit.taskKey, {
+        left: commit.nextLeft,
+        top: commit.nextTop,
+        placement: commit.placement,
+      });
       reactiveKeys.add(commit.taskKey);
     }
   }
@@ -1038,6 +1048,14 @@ function layoutScatterLabels({ activeId = null } = {}) {
     if (!Number.isFinite(currentTop) || Math.abs(currentTop - commit.nextTop) > .1) {
       commit.label.style.setProperty('--scatter-label-top', `${commit.nextTop}px`);
     }
+    // Keep the logical cache in sync with every repaired target. A later
+    // resize/drag layout must start from the repaired geometry instead of
+    // resurrecting the pre-repair position and reintroducing a collision.
+    scatterLabelPositions.set(commit.taskKey, {
+      left: commit.nextLeft,
+      top: commit.nextTop,
+      placement: commit.placement,
+    });
     commit.label.classList.remove('is-measuring');
     commit.label.style.removeProperty('visibility');
   }
