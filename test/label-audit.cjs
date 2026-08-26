@@ -14,6 +14,21 @@ app.whenReady().then(async () => {
     await win.loadURL(url + '?view=scatter');
     const results = await win.webContents.executeJavaScript(`(async () => {
       const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+      const waitFor = async (predicate, timeout = 4000) => {
+        const started = performance.now();
+        while (performance.now() - started < timeout) {
+          if (predicate()) return true;
+          await wait(50);
+        }
+        return Boolean(predicate());
+      };
+      // The app loads its fixture asynchronously after the document itself is
+      // ready. Waiting on the actual dots avoids measuring an empty/partial
+      // render when a CI runner is slower than a local machine.
+      await waitFor(() => document.querySelectorAll('.scatter-task').length > 0);
+      // Label geometry depends on the bundled Inter font. Do not solve using
+      // fallback glyph widths and then audit those stale positions.
+      if (document.fonts?.ready) await document.fonts.ready;
       const namesSetting = document.querySelector('#scatter-names-button');
       if (namesSetting && namesSetting.getAttribute('aria-pressed') !== 'true') namesSetting.click();
       // Let the eased label transition settle before measuring final geometry.
