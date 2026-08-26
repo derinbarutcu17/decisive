@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const net = require('node:net');
-const os = require('os');
+const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
