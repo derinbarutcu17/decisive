@@ -5,11 +5,11 @@
 </div>
 
 <p align="center">
-  <a href="docs/media/decisive-demo.mp4">
+  <a href="https://decisive-three.vercel.app/docs/media/decisive-demo.mp4">
     <img src="docs/images/decisive-demo-poster.jpg" alt="Watch the Decisive product demo" />
   </a>
 </p>
-<p align="center"><a href="docs/media/decisive-demo.mp4">▶ Watch the Decisive product demo</a></p>
+<p align="center"><a href="https://decisive-three.vercel.app/docs/media/decisive-demo.mp4">▶ Watch the Decisive product demo</a></p>
 
 ## The interface
 
