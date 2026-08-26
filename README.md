@@ -5,10 +5,11 @@
 </div>
 
 <p align="center">
-  <video src="docs/media/decisive-demo.mp4" controls muted loop playsinline width="100%">
-    <a href="docs/media/decisive-demo.mp4">Watch the Decisive product demo</a>
-  </video>
+  <a href="docs/media/decisive-demo.mp4">
+    <img src="docs/images/decisive-demo-poster.jpg" alt="Watch the Decisive product demo" />
+  </a>
 </p>
+<p align="center"><a href="docs/media/decisive-demo.mp4">▶ Watch the Decisive product demo</a></p>
 
 ## The interface
 
