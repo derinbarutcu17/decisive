@@ -15,3 +15,6 @@ logo.png
 decisive-mark-transparent.png
 fonts/Lato-*.ttf
 fonts/PTSerif-*.ttf
+
+# Local self-hosted download artifact (served by decisive-launch.html, too large for git)
+assets/Decisive-*.zip
