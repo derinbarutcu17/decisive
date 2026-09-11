@@ -286,12 +286,9 @@ a { color: inherit; }
   margin-top: clamp(48px, 7vh, 84px);
 }
 
-.hero-shot img {
-  width: min(100%, 1040px);
+.hero-shot .video-shell {
+  max-width: 1040px;
   margin: 0 auto;
-  border-radius: 18px;
-  border: 1px solid rgba(242, 241, 237, 0.1);
-  box-shadow: 0 60px 140px rgba(0, 0, 0, 0.55);
 }
 
 .tiles {
@@ -477,6 +474,8 @@ a { color: inherit; }
 
 .video-shell video { width: 100%; display: block; }
 
+.video-shell img { width: 100%; display: block; }
+
 .download { text-align: center; }
 
 .download-mark {
@@ -656,7 +655,15 @@ a { color: inherit; }
       <a class="text-link" href="https://decisive-three.vercel.app/" target="_blank" rel="noreferrer">Try it in your browser <span aria-hidden="true">→</span></a>
     </div>
     <div class="hero-shot reveal">
-      <img src="assets/decisive-desktop.png" width="2880" height="1684" fetchpriority="high" alt="Decisive showing four consequence quadrants with tasks placed in each.">
+      <div class="video-shell">
+        <video autoplay muted loop playsinline controls preload="auto" poster="assets/decisive-demo-poster.jpg">
+          <source src="assets/decisive-demo-720.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+    <div class="unsigned-note reveal">
+      <p class="label">First launch note</p>
+      <p>Releases are not signed yet, so macOS may block the first open. Go to System Settings → Privacy &amp; Security, choose Open Anyway, and confirm once. Only approve the copy downloaded from the official release page.</p>
     </div>
   </div>
 </section>
@@ -771,13 +778,11 @@ a { color: inherit; }
 <section class="chapter chapter--black demo">
   <div class="container">
     <div class="demo-head">
-      <h2 class="section-title reveal" style="margin-inline:auto;">See it in motion.</h2>
-      <p class="section-sub reveal">The demo runs in real time: capture, reclassify, complete, and clear the board.</p>
+      <h2 class="section-title reveal" style="margin-inline:auto;">The board, up close.</h2>
+      <p class="section-sub reveal">Every part of Decisive at a glance: the capture field, four quadrants, live counts, and the finished archive.</p>
     </div>
     <div class="video-shell reveal">
-      <video autoplay muted loop playsinline controls preload="auto" poster="assets/decisive-demo-poster.jpg">
-        <source src="assets/decisive-demo-720.mp4" type="video/mp4">
-      </video>
+      <img src="assets/decisive-desktop.png" width="2880" height="1684" loading="lazy" alt="Decisive showing four consequence quadrants with tasks placed in each.">
     </div>
   </div>
 </section>
@@ -791,10 +796,6 @@ a { color: inherit; }
       <a class="btn btn--primary" href="assets/Decisive-1.0.0-arm64.zip" download>Download for macOS</a>
     </div>
     <p class="spec-row reveal">Requires macOS 12 or later on Apple silicon.</p>
-    <div class="unsigned-note reveal">
-      <p class="label">First launch note</p>
-      <p>Releases are not signed yet, so macOS may block the first open. Go to System Settings → Privacy &amp; Security, choose Open Anyway, and confirm once. Only approve the copy downloaded from the official release page.</p>
-    </div>
   </div>
 </section>
 
