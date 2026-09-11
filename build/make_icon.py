@@ -17,4 +17,20 @@ pos = [
 for (x, y), c in zip(pos, colors):
     d.rounded_rectangle([x, y, x + tile, y + tile], radius=60, fill=c)
 img.save('build/icon.png')
-print('icon written')
+
+# Menu-bar variant: keep the same four-square silhouette, but use a simple
+# monochrome mark so the template image remains legible at 16–18px.
+menu = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+menu_draw = ImageDraw.Draw(menu)
+menu_pad, menu_gap = 86, 76
+menu_tile = (S - 2 * menu_pad - menu_gap) // 2
+menu_pos = [
+    (menu_pad, menu_pad),
+    (menu_pad + menu_tile + menu_gap, menu_pad),
+    (menu_pad, menu_pad + menu_tile + menu_gap),
+    (menu_pad + menu_tile + menu_gap, menu_pad + menu_tile + menu_gap),
+]
+for x, y in menu_pos:
+    menu_draw.rounded_rectangle([x, y, x + menu_tile, y + menu_tile], radius=96, fill='#ffffff')
+menu.save('build/menu-bar-icon.png')
+print('icons written')

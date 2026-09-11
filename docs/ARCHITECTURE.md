@@ -7,7 +7,7 @@ Decisive is a local-first task board with a browser preview and a native macOS s
 - `index.html`, `style.css`, `app.js`: the shared interface and interaction model.
 - `server.js`: the local HTTP API used by development and Electron.
 - `api/tasks.js`: the stateless Vercel adapter. Browser preview persistence falls back to local storage and must not be treated as a durable cloud database.
-- `main.cjs`: starts the local API, opens the Electron window, and selects the macOS Application Support data file.
+- `main.cjs`: starts the local API, opens the Electron window, selects the macOS Application Support data file, and owns the macOS menu-bar status item with window-size actions.
 - `examples/demo-data.json`: sanitized demo fixture only. It must never be used as a personal data store.
 
 ## Task lifecycle

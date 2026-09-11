@@ -31,6 +31,7 @@
       "metal-shader.js",
       "vendor/asciify-engine.js",
       "decisive-mark.png",
+      "build/menu-bar-icon.png",
       "fonts/Inter-Variable.ttf"
     ],
     "mac": {

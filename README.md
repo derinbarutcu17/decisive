@@ -77,6 +77,8 @@ open dist/mac-arm64/Decisive.app
 
 The packaged app stores its persistent task history in macOS Application Support. The repository’s `data.json` is intentionally ignored because local task history is private.
 
+While the macOS app is running, Decisive also places its mark in the system menu bar. Select it to bring the app forward, choose a window size, fit the window to the current display, or quit without touching the task store.
+
 ## Capture the README previews
 
 The screenshots above are generated from the actual UI with a sanitized fixture:
