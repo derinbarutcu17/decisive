@@ -458,47 +458,6 @@ a { color: inherit; }
   padding: 5px 10px;
 }
 
-.trust-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: clamp(40px, 6vw, 88px);
-  align-items: center;
-}
-
-.trust-list {
-  list-style: none;
-  margin-top: 34px;
-  display: grid;
-  gap: 18px;
-}
-
-.trust-list li {
-  display: grid;
-  gap: 4px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line-on-light);
-}
-
-.trust-list .label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted-on-light);
-}
-
-.trust-list .value {
-  font-size: 17px;
-  line-height: 1.45;
-  color: var(--ink-on-light);
-}
-
-.trust-phone img {
-  width: min(100%, 320px);
-  margin: 0 auto;
-  border-radius: 18px;
-  border: 1px solid var(--line-on-light);
-  box-shadow: 0 40px 90px rgba(20, 20, 20, 0.18);
-}
-
 .demo-head { text-align: center; }
 
 .demo-head .section-sub { margin-inline: auto; }
@@ -513,45 +472,17 @@ a { color: inherit; }
   border-radius: 18px;
   overflow: hidden;
   background: var(--surface);
-  cursor: pointer;
   box-shadow: 0 60px 140px rgba(0, 0, 0, 0.55);
 }
 
-.video-shell img { width: 100%; }
-
 .video-shell video { width: 100%; display: block; }
-
-.play {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-}
-
-.play span {
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 18px 50px rgba(255, 89, 8, 0.35);
-  transition: transform 0.7s var(--ease), background 0.3s var(--ease);
-}
-
-.play svg { margin-left: 3px; }
-
-.video-shell:hover .play span { transform: scale(1.06); background: var(--accent-hover); }
-
-.video-shell:active .play span { transform: scale(0.98); }
 
 .download { text-align: center; }
 
 .download-mark {
-  width: 132px;
+  width: 148px;
   margin: 0 auto 30px;
-  border-radius: 28px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55));
 }
 
 .download-title {
@@ -661,14 +592,11 @@ a { color: inherit; }
 
 @media (max-width: 880px) {
   .feature-grid,
-  .feature-grid--flip,
-  .trust-grid {
+  .feature-grid--flip {
     grid-template-columns: 1fr;
   }
 
   .feature-grid--flip .feature-visual { order: 2; }
-
-  .trust-phone { order: 2; }
 }
 
 @media (max-width: 720px) {
@@ -711,8 +639,6 @@ a { color: inherit; }
       <span>Decisive</span>
     </a>
     <nav class="nav-links" aria-label="Primary">
-      <a href="#top">Overview</a>
-      <a href="#method">Method</a>
       <a href="https://github.com/derinbarutcu17/decisive" target="_blank" rel="noreferrer">GitHub</a>
     </nav>
     <a class="btn btn--ghost btn--sm nav-cta" href="#download">Download</a>
@@ -842,60 +768,25 @@ a { color: inherit; }
   </div>
 </section>
 
-<section class="chapter chapter--light">
-  <div class="container trust-grid">
-    <div>
-      <h2 class="section-title reveal">Yours alone.</h2>
-      <p class="section-sub reveal">Tasks live in a local JSON file on your Mac. No account, no sync layer, no cloud dependency.</p>
-      <ul class="trust-list">
-        <li class="reveal">
-          <span class="label">Local JSON</span>
-          <span class="value">Your task list stays on your machine, readable and portable.</span>
-        </li>
-        <li class="reveal">
-          <span class="label">Offline</span>
-          <span class="value">The board opens and works with no network at all.</span>
-        </li>
-        <li class="reveal">
-          <span class="label">Menu bar</span>
-          <span class="value">Bring Decisive forward from the menu bar, or fit it to the display you are on.</span>
-        </li>
-        <li class="reveal">
-          <span class="label">Considerate motion</span>
-          <span class="value">The animated background pauses when the app is hidden or unfocused.</span>
-        </li>
-      </ul>
-    </div>
-    <div class="trust-phone reveal">
-      <img src="assets/decisive-iphone.png" width="780" height="1632" loading="lazy" alt="Decisive on a narrow screen with stacked quadrants and touch-friendly controls.">
-    </div>
-  </div>
-</section>
-
 <section class="chapter chapter--black demo">
   <div class="container">
     <div class="demo-head">
       <h2 class="section-title reveal" style="margin-inline:auto;">See it in motion.</h2>
       <p class="section-sub reveal">The demo runs in real time: capture, reclassify, complete, and clear the board.</p>
     </div>
-    <button class="video-shell reveal" id="demo-play" type="button" aria-label="Play the Decisive demo">
-      <img src="assets/decisive-demo-poster.jpg" width="1920" height="1080" loading="lazy" alt="">
-      <span class="play" aria-hidden="true">
-        <span>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7 5.5V18.5L19 12L7 5.5Z" fill="#0b0b0b"/>
-          </svg>
-        </span>
-      </span>
-    </button>
+    <div class="video-shell reveal">
+      <video autoplay muted loop playsinline controls preload="auto" poster="assets/decisive-demo-poster.jpg">
+        <source src="assets/decisive-demo-720.mp4" type="video/mp4">
+      </video>
+    </div>
   </div>
 </section>
 
 <section class="chapter chapter--black download" id="download">
   <div class="container">
-    <img class="download-mark reveal" src="assets/decisive-mark-transparent.png" width="512" height="512" loading="lazy" alt="The Decisive mark: four metal tiles arranged as a two by two matrix.">
+    <img class="download-mark reveal" src="assets/decisive-app-icon.png" width="512" height="512" loading="lazy" alt="The Decisive mark: four metal tiles arranged as a two by two matrix.">
     <h2 class="download-title reveal">Get Decisive for macOS</h2>
-    <p class="download-version reveal">Version 1.0.0</p>
+    <p class="download-version reveal"><span id="release-version">v1.0.0</span></p>
     <div class="download-actions reveal">
       <a class="btn btn--primary" href="assets/Decisive-1.0.0-arm64.zip" download>Download for macOS</a>
     </div>
@@ -973,22 +864,32 @@ a { color: inherit; }
     });
   }
 
-  var playButton = document.getElementById("demo-play");
-  if (playButton) {
-    playButton.addEventListener("click", function () {
-      var video = document.createElement("video");
-      video.controls = true;
-      video.autoplay = true;
-      video.playsInline = true;
-      video.poster = "assets/decisive-demo-poster.jpg";
-      var source = document.createElement("source");
-      source.src = "assets/decisive-demo-720.mp4";
-      source.type = "video/mp4";
-      video.appendChild(source);
-      playButton.replaceWith(video);
-      var playPromise = video.play();
-      if (playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(function () {});
+  var versionEl = document.getElementById("release-version");
+  if (versionEl) {
+    fetch("https://api.github.com/repos/derinbarutcu17/decisive/releases/latest")
+      .then(function (response) {
+        return response.ok ? response.json() : null;
+      })
+      .then(function (data) {
+        if (data && typeof data.tag_name === "string" && data.tag_name) {
+          versionEl.textContent = data.tag_name;
+        }
+      })
+      .catch(function () {});
+  }
+
+  var demoVideo = document.querySelector(".video-shell video");
+  if (demoVideo) {
+    var tryPlay = function () {
+      var promise = demoVideo.play();
+      if (promise && typeof promise.catch === "function") {
+        promise.catch(function () {});
+      }
+    };
+    tryPlay();
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && demoVideo.paused) {
+        tryPlay();
       }
     });
   }
