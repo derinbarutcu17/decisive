@@ -104,6 +104,29 @@ a { color: inherit; }
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--line);
+  transition: padding 0.55s var(--ease), background 0.5s var(--ease), border-color 0.5s var(--ease);
+}
+
+.site-nav--compact {
+  padding-top: 12px;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom-color: transparent;
+  pointer-events: none;
+}
+
+.site-nav--compact .nav-inner {
+  pointer-events: auto;
+  max-width: 720px;
+  height: 52px;
+  padding-inline: 22px;
+  border-color: rgba(242, 241, 237, 0.14);
+  border-radius: 999px;
+  background: rgba(18, 18, 17, 0.82);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
 }
 
 .nav-inner {
@@ -111,6 +134,9 @@ a { color: inherit; }
   align-items: center;
   gap: 28px;
   height: 56px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: max-width 0.55s var(--ease), height 0.45s var(--ease), padding 0.45s var(--ease), border-radius 0.55s var(--ease), border-color 0.45s var(--ease), background 0.45s var(--ease), box-shadow 0.45s var(--ease);
 }
 
 .brand {
@@ -213,11 +239,11 @@ a { color: inherit; }
 }
 
 .section-title {
-  font-size: clamp(30px, 4.4vw, 56px);
+  font-size: clamp(34px, 5vw, 68px);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.06;
-  max-width: 720px;
+  letter-spacing: -0.022em;
+  line-height: 1.05;
+  max-width: 780px;
 }
 
 .section-sub {
@@ -250,14 +276,46 @@ a { color: inherit; }
   pointer-events: none;
 }
 
+.hero-ghost {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, calc(-50% + var(--py, 0px)));
+  font-size: clamp(150px, 24vw, 380px);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+  white-space: nowrap;
+  background: linear-gradient(180deg, rgba(242, 241, 237, 0.15) 0%, rgba(242, 241, 237, 0.015) 84%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.hero-glow {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: min(64vw, 880px);
+  height: min(36vw, 480px);
+  transform: translate(-50%, calc(-50% + var(--py, 0px)));
+  background: radial-gradient(closest-side, rgba(255, 89, 8, 0.15), rgba(255, 89, 8, 0) 72%);
+  filter: blur(26px);
+  pointer-events: none;
+  will-change: transform;
+}
+
 .hero .container { position: relative; }
 
 .hero-title {
-  font-size: clamp(40px, 6.2vw, 72px);
+  font-size: clamp(42px, 6.6vw, 88px);
   font-weight: 600;
-  letter-spacing: -0.022em;
+  letter-spacing: -0.024em;
   line-height: 1.02;
-  max-width: 980px;
+  max-width: 1040px;
   margin: 0 auto;
   background: linear-gradient(90deg, #ffffff 0%, #9b9b9b 100%);
   -webkit-background-clip: text;
@@ -289,6 +347,22 @@ a { color: inherit; }
 .hero-shot .video-shell {
   max-width: 1040px;
   margin: 0 auto;
+  transform: translate3d(0, var(--vy, 0px), 0) scale(var(--vs, 1));
+  will-change: transform;
+}
+
+.hero-shot video {
+  animation: hero-settle 1.6s var(--ease) both;
+}
+
+@keyframes hero-settle {
+  from { transform: scale(1.045); }
+  to { transform: scale(1); }
+}
+
+[data-parallax-img] {
+  transform: scale(1.12) translate3d(0, var(--py, 0px), 0);
+  will-change: transform;
 }
 
 .tiles {
@@ -332,14 +406,18 @@ a { color: inherit; }
 .tile--delegate .tile-dot { background: var(--delegate); }
 .tile--eliminate .tile-dot { background: var(--eliminate); }
 
+.tiles .tile:nth-child(2) { transition-delay: 0.08s; }
+.tiles .tile:nth-child(3) { transition-delay: 0.16s; }
+.tiles .tile:nth-child(4) { transition-delay: 0.24s; }
+
 .tagline { text-align: center; }
 
 .tagline-text {
-  font-size: clamp(32px, 5vw, 64px);
+  font-size: clamp(36px, 5.4vw, 72px);
   font-weight: 600;
-  letter-spacing: -0.022em;
-  line-height: 1.08;
-  max-width: 820px;
+  letter-spacing: -0.024em;
+  line-height: 1.06;
+  max-width: 880px;
   margin: 0 auto;
 }
 
@@ -405,11 +483,40 @@ a { color: inherit; }
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   padding: 8px 12px;
+  transition: transform 0.16s var(--ease), background 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.keycap.is-pressed {
+  transform: scale(0.92);
+  background: var(--ink);
+  color: var(--black);
 }
 
 .scatter-wrap { position: relative; }
 
 .scatter-wrap svg { width: 100%; height: auto; display: block; }
+
+.scatter-wrap circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+  transition: transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feature-visual.in .scatter-wrap circle { transform: scale(1); }
+
+.scatter-wrap .quad-label {
+  opacity: 0;
+  transition: opacity 0.9s var(--ease) 0.5s;
+}
+
+.scatter-wrap .axis-label {
+  opacity: 0;
+  transition: opacity 0.9s var(--ease) 0.25s;
+}
+
+.feature-visual.in .scatter-wrap .quad-label,
+.feature-visual.in .scatter-wrap .axis-label { opacity: 1; }
 
 .axis-label {
   font-family: var(--sans);
@@ -438,9 +545,23 @@ a { color: inherit; }
 .archive-card .task {
   font-size: 17px;
   color: var(--muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
+  position: relative;
 }
+
+.archive-card .task::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.8s var(--ease) 0.3s;
+}
+
+.feature-visual.in .archive-card .task::after { transform: scaleX(1); }
 
 .archive-badge {
   margin-left: auto;
@@ -453,6 +574,14 @@ a { color: inherit; }
   border: 1px solid rgba(112, 211, 148, 0.35);
   border-radius: 999px;
   padding: 5px 10px;
+  transform: scale(0.7);
+  opacity: 0;
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.75s, opacity 0.5s var(--ease) 0.75s;
+}
+
+.feature-visual.in .archive-badge {
+  transform: none;
+  opacity: 1;
 }
 
 .demo-head { text-align: center; }
@@ -485,10 +614,10 @@ a { color: inherit; }
 }
 
 .download-title {
-  font-size: clamp(30px, 4.4vw, 56px);
+  font-size: clamp(34px, 5vw, 68px);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.06;
+  letter-spacing: -0.022em;
+  line-height: 1.05;
 }
 
 .download-version {
@@ -589,6 +718,28 @@ a { color: inherit; }
   transform: none;
 }
 
+.reveal--mask {
+  overflow: hidden;
+}
+
+.reveal--mask .mask-line {
+  display: block;
+  transform: translateY(115%);
+  opacity: 0.001;
+  transition: transform 1.15s var(--ease) 0.05s, opacity 1s var(--ease);
+}
+
+.reveal--mask.in .mask-line {
+  transform: none;
+  opacity: 1;
+}
+
+.delay-1 { transition-delay: 0.12s; }
+
+.delay-2 { transition-delay: 0.24s; }
+
+.delay-3 { transition-delay: 0.36s; }
+
 @media (max-width: 880px) {
   .feature-grid,
   .feature-grid--flip {
@@ -624,7 +775,17 @@ a { color: inherit; }
 
   .reveal { opacity: 1; transform: none; }
 
+  .reveal--mask .mask-line { transform: none !important; opacity: 1 !important; }
+
   .tagline-text .word { opacity: 1; }
+
+  .scatter-wrap circle { transform: none !important; }
+
+  .archive-card .task::after { transform: none !important; }
+
+  .archive-badge { transform: none !important; opacity: 1 !important; }
+
+  .hero-shot .video-shell { transform: none !important; }
 }
 </style>
 </head>
@@ -647,10 +808,12 @@ a { color: inherit; }
 <main id="main">
 
 <section class="chapter chapter--black hero" id="top">
+  <div class="hero-ghost" data-parallax="0.12" aria-hidden="true">Decisive</div>
+  <div class="hero-glow" data-parallax="0.08" aria-hidden="true"></div>
   <div class="container">
-    <h1 class="hero-title reveal">A local-first decision matrix<br class="br-d"> for the work that matters.</h1>
-    <p class="hero-sub reveal">Capture a task, place it by consequence, and keep the next move visible. Focused, private, and fast, with no account and no cloud: your tasks stay on your Mac.</p>
-    <div class="hero-actions reveal">
+    <h1 class="hero-title reveal reveal--mask"><span class="mask-line">A local-first decision matrix<br class="br-d"> for the work that matters.</span></h1>
+    <p class="hero-sub reveal delay-1">Capture a task, place it by consequence, and keep the next move visible. Focused, private, and fast, with no account and no cloud: your tasks stay on your Mac.</p>
+    <div class="hero-actions reveal delay-2">
       <a class="btn btn--primary" href="#download">Download for macOS</a>
       <a class="text-link" href="https://decisive-three.vercel.app/" target="_blank" rel="noreferrer">Try it in your browser <span aria-hidden="true">→</span></a>
     </div>
@@ -670,7 +833,7 @@ a { color: inherit; }
 
 <section class="chapter chapter--light" id="method">
   <div class="container">
-    <h2 class="section-title reveal">The method, made obvious.</h2>
+    <h2 class="section-title reveal reveal--mask"><span class="mask-line">The method, made obvious.</span></h2>
     <p class="section-sub reveal">One capture field, four consequence quadrants. Every task lands where it belongs, and you can move it in a single drag.</p>
     <div class="tiles">
       <article class="tile tile--do reveal">
@@ -706,13 +869,13 @@ a { color: inherit; }
 <section class="chapter chapter--black">
   <div class="container feature-grid">
     <div class="feature-copy">
-      <h2 class="section-title reveal">Type once. Press enter.</h2>
+      <h2 class="section-title reveal reveal--mask"><span class="mask-line">Type once. Press enter.</span></h2>
       <p class="section-sub reveal">The capture field is the whole inbox. Type the task, press Enter, and it lands in Do. Edit in place whenever you want.</p>
     </div>
     <div class="feature-visual reveal">
-      <div class="capture-mock">
+      <div class="capture-mock" data-onin="type">
         <div class="capture-bar">
-          <span class="capture-text">Prep the launch notes</span>
+          <span class="capture-text" data-type="Prep the launch notes">Prep the launch notes</span>
           <span class="caret" aria-hidden="true"></span>
           <span class="keycap">Enter → Do</span>
         </div>
@@ -724,7 +887,7 @@ a { color: inherit; }
 <section class="chapter chapter--black">
   <div class="container feature-grid feature-grid--flip">
     <div class="feature-copy">
-      <h2 class="section-title reveal">A map, not a list.</h2>
+      <h2 class="section-title reveal reveal--mask"><span class="mask-line">A map, not a list.</span></h2>
       <p class="section-sub reveal">Scatter plots your board on urgency and importance so you can see the shape of the week before you touch a single task. Drag a task between quadrants and the matrix follows.</p>
     </div>
     <div class="feature-visual reveal">
@@ -740,20 +903,20 @@ a { color: inherit; }
           <text class="quad-label" x="510" y="340" fill="#f4b942" text-anchor="end">Delegate</text>
           <text class="axis-label" x="600" y="390" text-anchor="end">Urgency</text>
           <text class="axis-label" x="24" y="46" transform="rotate(-90 24 46)">Importance</text>
-          <circle cx="150" cy="118" r="7" fill="#55d6be" opacity="0.95"/>
-          <circle cx="215" cy="92" r="5" fill="#55d6be" opacity="0.7"/>
-          <circle cx="262" cy="150" r="9" fill="#55d6be" opacity="0.85"/>
-          <circle cx="124" cy="170" r="5" fill="#55d6be" opacity="0.6"/>
-          <circle cx="420" cy="96" r="9" fill="#6ea8fe" opacity="0.95"/>
-          <circle cx="500" cy="130" r="6" fill="#6ea8fe" opacity="0.8"/>
-          <circle cx="368" cy="150" r="7" fill="#6ea8fe" opacity="0.85"/>
-          <circle cx="540" cy="84" r="5" fill="#6ea8fe" opacity="0.6"/>
-          <circle cx="418" cy="272" r="8" fill="#f4b942" opacity="0.9"/>
-          <circle cx="512" cy="300" r="6" fill="#f4b942" opacity="0.7"/>
-          <circle cx="360" cy="318" r="5" fill="#f4b942" opacity="0.6"/>
-          <circle cx="152" cy="296" r="6" fill="#ff6b6b" opacity="0.8"/>
-          <circle cx="230" cy="320" r="5" fill="#ff6b6b" opacity="0.6"/>
-          <circle cx="120" cy="330" r="4" fill="#ff6b6b" opacity="0.5"/>
+          <circle cx="150" cy="118" r="7" fill="#55d6be" opacity="0.95" style="transition-delay:0.05s"/>
+          <circle cx="215" cy="92" r="5" fill="#55d6be" opacity="0.7" style="transition-delay:0.1s"/>
+          <circle cx="262" cy="150" r="9" fill="#55d6be" opacity="0.85" style="transition-delay:0.15s"/>
+          <circle cx="124" cy="170" r="5" fill="#55d6be" opacity="0.6" style="transition-delay:0.2s"/>
+          <circle cx="420" cy="96" r="9" fill="#6ea8fe" opacity="0.95" style="transition-delay:0.28s"/>
+          <circle cx="500" cy="130" r="6" fill="#6ea8fe" opacity="0.8" style="transition-delay:0.33s"/>
+          <circle cx="368" cy="150" r="7" fill="#6ea8fe" opacity="0.85" style="transition-delay:0.38s"/>
+          <circle cx="540" cy="84" r="5" fill="#6ea8fe" opacity="0.6" style="transition-delay:0.43s"/>
+          <circle cx="418" cy="272" r="8" fill="#f4b942" opacity="0.9" style="transition-delay:0.52s"/>
+          <circle cx="512" cy="300" r="6" fill="#f4b942" opacity="0.7" style="transition-delay:0.57s"/>
+          <circle cx="360" cy="318" r="5" fill="#f4b942" opacity="0.6" style="transition-delay:0.62s"/>
+          <circle cx="152" cy="296" r="6" fill="#ff6b6b" opacity="0.8" style="transition-delay:0.7s"/>
+          <circle cx="230" cy="320" r="5" fill="#ff6b6b" opacity="0.6" style="transition-delay:0.75s"/>
+          <circle cx="120" cy="330" r="4" fill="#ff6b6b" opacity="0.5" style="transition-delay:0.8s"/>
         </svg>
       </div>
     </div>
@@ -763,7 +926,7 @@ a { color: inherit; }
 <section class="chapter chapter--black">
   <div class="container feature-grid">
     <div class="feature-copy">
-      <h2 class="section-title reveal">Finish, then let go.</h2>
+      <h2 class="section-title reveal reveal--mask"><span class="mask-line">Finish, then let go.</span></h2>
       <p class="section-sub reveal">Completed tasks move to the archive with a single undo. Deleting asks twice on purpose.</p>
     </div>
     <div class="feature-visual reveal">
@@ -778,11 +941,11 @@ a { color: inherit; }
 <section class="chapter chapter--black demo">
   <div class="container">
     <div class="demo-head">
-      <h2 class="section-title reveal" style="margin-inline:auto;">The board, up close.</h2>
+      <h2 class="section-title reveal reveal--mask" style="margin-inline:auto;"><span class="mask-line">The board, up close.</span></h2>
       <p class="section-sub reveal">Every part of Decisive at a glance: the capture field, four quadrants, live counts, and the finished archive.</p>
     </div>
     <div class="video-shell reveal">
-      <img src="assets/decisive-desktop.png" width="2880" height="1684" loading="lazy" alt="Decisive showing four consequence quadrants with tasks placed in each.">
+      <img src="assets/decisive-desktop.png" width="2880" height="1684" loading="lazy" data-parallax-img data-parallax="0.045" alt="Decisive showing four consequence quadrants with tasks placed in each.">
     </div>
   </div>
 </section>
@@ -790,7 +953,7 @@ a { color: inherit; }
 <section class="chapter chapter--black download" id="download">
   <div class="container">
     <img class="download-mark reveal" src="assets/decisive-app-icon.png" width="512" height="512" loading="lazy" alt="The Decisive mark: four metal tiles arranged as a two by two matrix.">
-    <h2 class="download-title reveal">Get Decisive for macOS</h2>
+    <h2 class="download-title reveal reveal--mask"><span class="mask-line">Get Decisive for macOS</span></h2>
     <p class="download-version reveal"><span id="release-version">v1.0.0</span></p>
     <div class="download-actions reveal">
       <a class="btn btn--primary" href="assets/Decisive-1.0.0-arm64.zip" download>Download for macOS</a>
@@ -892,6 +1055,93 @@ a { color: inherit; }
       if (!document.hidden && demoVideo.paused) {
         tryPlay();
       }
+    });
+  }
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var siteNav = document.querySelector(".site-nav");
+  var heroEl = document.querySelector(".hero");
+  var heroShell = document.querySelector(".hero-shot .video-shell");
+  var parallaxEls = [].slice.call(document.querySelectorAll("[data-parallax], [data-parallax-img]"));
+
+  if (!reduceMotion && (siteNav || heroShell || parallaxEls.length > 0)) {
+    var ticking = false;
+    var updateScrollFX = function () {
+      ticking = false;
+      if (siteNav && heroEl) {
+        var threshold = heroEl.offsetTop + heroEl.offsetHeight - 280;
+        siteNav.classList.toggle("site-nav--compact", window.scrollY > threshold);
+      }
+      if (heroShell && heroEl) {
+        var heroProgress = Math.min(Math.max(window.scrollY / (heroEl.offsetHeight * 0.9), 0), 1);
+        heroShell.style.setProperty("--vy", (-30 * heroProgress).toFixed(1) + "px");
+        heroShell.style.setProperty("--vs", (1 - 0.05 * heroProgress).toFixed(4));
+      }
+      var vh = window.innerHeight;
+      parallaxEls.forEach(function (el) {
+        var speed = parseFloat(el.getAttribute("data-parallax")) || 0.1;
+        var rect = el.getBoundingClientRect();
+        var center = rect.top + rect.height / 2 - vh / 2;
+        el.style.setProperty("--py", (-center * speed).toFixed(1) + "px");
+      });
+    };
+    var onScroll = function () {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(updateScrollFX);
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    updateScrollFX();
+  }
+
+  var typeStarted = false;
+  var startTyping = function (mock) {
+    if (typeStarted || reduceMotion) {
+      return;
+    }
+    typeStarted = true;
+    var target = mock.querySelector("[data-type]");
+    var keycap = mock.querySelector(".keycap");
+    if (!target) {
+      return;
+    }
+    var full = target.getAttribute("data-type") || target.textContent;
+    target.textContent = "";
+    var index = 0;
+    var timer = window.setInterval(function () {
+      index += 1;
+      target.textContent = full.slice(0, index);
+      if (index >= full.length) {
+        window.clearInterval(timer);
+        if (keycap) {
+          window.setTimeout(function () {
+            keycap.classList.add("is-pressed");
+            window.setTimeout(function () {
+              keycap.classList.remove("is-pressed");
+            }, 190);
+          }, 380);
+        }
+      }
+    }, 58);
+  };
+
+  var onInTargets = document.querySelectorAll("[data-onin]");
+  if (onInTargets.length > 0) {
+    var onInObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          if (entry.target.getAttribute("data-onin") === "type") {
+            startTyping(entry.target);
+          }
+          onInObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    onInTargets.forEach(function (el) {
+      onInObserver.observe(el);
     });
   }
 })();
