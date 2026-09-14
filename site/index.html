@@ -276,25 +276,6 @@ a { color: inherit; }
   pointer-events: none;
 }
 
-.hero-ghost {
-  position: absolute;
-  left: 50%;
-  top: 56%;
-  transform: translate(-50%, calc(-50% + var(--py, 0px)));
-  font-size: clamp(150px, 24vw, 380px);
-  font-weight: 600;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-  white-space: nowrap;
-  background: linear-gradient(180deg, rgba(242, 241, 237, 0.15) 0%, rgba(242, 241, 237, 0.015) 84%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  pointer-events: none;
-  user-select: none;
-  will-change: transform;
-}
-
 .hero-glow {
   position: absolute;
   left: 50%;
@@ -358,11 +339,6 @@ a { color: inherit; }
 @keyframes hero-settle {
   from { transform: scale(1.045); }
   to { transform: scale(1); }
-}
-
-[data-parallax-img] {
-  transform: scale(1.12) translate3d(0, var(--py, 0px), 0);
-  will-change: transform;
 }
 
 .tiles {
@@ -808,7 +784,6 @@ a { color: inherit; }
 <main id="main">
 
 <section class="chapter chapter--black hero" id="top">
-  <div class="hero-ghost" data-parallax="0.12" aria-hidden="true">Decisive</div>
   <div class="hero-glow" data-parallax="0.08" aria-hidden="true"></div>
   <div class="container">
     <h1 class="hero-title reveal reveal--mask"><span class="mask-line">A local-first decision matrix<br class="br-d"> for the work that matters.</span></h1>
@@ -945,7 +920,7 @@ a { color: inherit; }
       <p class="section-sub reveal">Every part of Decisive at a glance: the capture field, four quadrants, live counts, and the finished archive.</p>
     </div>
     <div class="video-shell reveal">
-      <img src="assets/decisive-desktop.png" width="2880" height="1684" loading="lazy" data-parallax-img data-parallax="0.045" alt="Decisive showing four consequence quadrants with tasks placed in each.">
+      <img src="assets/decisive-desktop.png" width="2880" height="1684" loading="lazy" alt="Decisive showing four consequence quadrants with tasks placed in each.">
     </div>
   </div>
 </section>
