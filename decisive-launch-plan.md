@@ -77,3 +77,16 @@ sheen on hover, a dot texture behind the hero, all disabled under
 
 Parked until asked: commit and tag `v1.0.0`, publish the release, deploy or
 routing changes.
+
+## Deployed
+
+- Site source lives in `site/` (`index.html` + `assets/`), served locally with
+  any static server rooted at `site/`.
+- Vercel project `decisive-app` → **https://decisive-app.vercel.app** (the bare
+  `decisive.vercel.app` was already claimed globally, and the existing `decisive`
+  Vercel project auto-suffixed to `decisive-three` for the same reason).
+- Vercel caps deployments at 100 MB per file, so the 128 MB app zip is hosted in
+  Vercel Blob (`decisive-downloads` store) and `/download` 307-redirects to it.
+  Swap the `vercel.json` redirect target when a new build ships.
+- Deploy with: `cd site && vercel deploy --prod`.
+

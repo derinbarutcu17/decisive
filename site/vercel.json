@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/download",
+      "destination": "https://prr0qwon4hh3i78r.public.blob.vercel-storage.com/Decisive-1.0.0-arm64.zip",
+      "permanent": false
+    }
+  ]
+}
