@@ -60,6 +60,16 @@ try {
   assert(undone.done === false && undone.doneAt === null, 'unmark done failed');
   const invalidArchive = await fetch(base + `/api/tasks/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: true }) });
   assert(invalidArchive.status === 409, 'active tasks must not be archivable');
+  const datedCreate = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'dated', quadrant: 'schedule', dueDate: '2026-10-12' }) })).json();
+  assert(datedCreate.dueDate === '2026-10-12', 'create should accept an ISO due date');
+  const undatedCreate = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'undated', quadrant: 'do' }) })).json();
+  assert(undatedCreate.dueDate === null, 'tasks without a due date should normalize to null');
+  const invalidDate = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'bad date', quadrant: 'do', dueDate: '2026-13-45' }) })).json();
+  assert(invalidDate.dueDate === null, 'invalid due dates must normalize to null');
+  const clearedDate = await (await fetch(base + `/api/tasks/${datedCreate.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate: null }) })).json();
+  assert(clearedDate.dueDate === null, 'patch should clear a due date');
+  const reDated = await (await fetch(base + `/api/tasks/${datedCreate.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dueDate: '2026-11-03' }) })).json();
+  assert(reDated.dueDate === '2026-11-03', 'patch should set a due date');
   const archiveCandidate = await (await fetch(base + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'archive me', quadrant: 'do' }) })).json();
   await fetch(base + `/api/tasks/${archiveCandidate.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: true }) });
   const archived = await (await fetch(base + '/api/tasks?done=true', { method: 'DELETE' })).json();
@@ -99,7 +109,10 @@ try {
       `demo restore should leave active ${quadrant} content`,
     );
   }
-  assert(afterRestore.some(task => task.done === true && task.archived === false), 'demo restore should include visible done content');
+  // The fixture ships fixed done dates, so any GET runs the 30-day retention
+  // sweep and archives them. Assert on the restore response itself, which is
+  // the state the fixture defines, independent of the test's wall clock.
+  assert(restored.tasks.some(task => task.done === true && task.archived === false), 'demo restore should include visible done content');
   const restoredAgainResponse = await fetch(base + '/api/demo/restore', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -30,6 +30,15 @@ function weight(value, fallback) {
   return SNAP_POINTS.reduce((closest, point) => Math.abs(point - clamped) < Math.abs(closest - clamped) ? point : closest, SNAP_POINTS[0]);
 }
 
+function normalizeDueDate(value) {
+  if (value == null || value === '') return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  const valid = d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+  return valid ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
 function applyDefaultWeights(task) {
   const defaults = DEFAULT_WEIGHTS[task.quadrant] || DEFAULT_WEIGHTS.do;
   task.importance = weight(task.importance, defaults.importance);
@@ -172,7 +181,7 @@ const server = http.createServer(async (req, res) => {
         const snapshot = cloneTasks();
         const q = QUADRANTS.includes(body.quadrant) ? body.quadrant : 'do';
         const defaults = DEFAULT_WEIGHTS[q];
-        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency) };
+        const t = { id: randomUUID(), title: String(body.title || ''), note: String(body.note || ''), quadrant: q, order: tasks.filter(x => x.quadrant === q && !x.done && !x.archived).length, done: false, doneAt: null, archived: false, archivedAt: null, importance: weight(body.importance, defaults.importance), urgency: weight(body.urgency, defaults.urgency), dueDate: normalizeDueDate(body.dueDate) };
         tasks.push(t); await saveWithRollback(snapshot); return json(201, t);
       }
 
@@ -211,6 +220,7 @@ const server = http.createServer(async (req, res) => {
           }
           if ('title' in body) t.title = String(body.title);
           if ('note' in body) t.note = String(body.note);
+          if ('dueDate' in body) t.dueDate = normalizeDueDate(body.dueDate);
           if ('quadrant' in body && !QUADRANTS.includes(body.quadrant)) return json(400, { error: 'invalid quadrant' });
           const defaults = DEFAULT_WEIGHTS[t.quadrant] || DEFAULT_WEIGHTS.do;
           if ('importance' in body) t.importance = weight(body.importance, defaults.importance);

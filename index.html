@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisive</title>
 <script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 <div id="phone-shell">
@@ -23,6 +23,7 @@
     <div class="view-switch" role="group" aria-label="Board view">
       <span class="view-switch-pill" aria-hidden="true"></span>
       <button type="button" class="view-button is-active" data-view="matrix" aria-pressed="true">Matrix</button>
+      <button type="button" class="view-button" data-view="calendar" aria-pressed="false">Calendar</button>
       <button type="button" class="view-button" data-view="scatter" aria-pressed="false">Scatter</button>
       <button type="button" class="view-button archive-button" data-view="archive" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg><span>Archive</span></button>
     </div>
@@ -54,6 +55,25 @@
 <section class="capture-panel" aria-label="Task capture">
   <div class="capture-control">
     <input id="quick-add" type="text" placeholder="Type a task and press Enter…" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" inputmode="text" aria-label="Add a task">
+    <div class="calendar-date-wrap">
+      <button type="button" class="calendar-date-button" id="matrix-date-button" aria-haspopup="dialog" aria-expanded="false" aria-controls="matrix-date-popover" title="Pick a date">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v13H5zM5 10.5h14M9 3.5v4M15 3.5v4"/></svg>
+        <span id="matrix-date-label">Date</span>
+      </button>
+      <div class="calendar-date-popover" id="matrix-date-popover" role="dialog" aria-label="Pick a task date" hidden>
+        <div class="date-popover-head">
+          <button type="button" class="date-popover-nav" id="matrix-date-prev" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+          </button>
+          <span class="date-popover-title" id="matrix-date-title">—</span>
+          <button type="button" class="date-popover-nav" id="matrix-date-next" aria-label="Next month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="date-popover-weekdays" aria-hidden="true"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+        <div class="date-popover-grid" id="matrix-date-grid" role="grid" aria-label="Days"></div>
+      </div>
+    </div>
     <span class="enter-key">Enter <svg class="enter-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Do</span>
   </div>
   <p class="app-status" id="app-status" role="status" aria-live="polite" aria-atomic="true" hidden></p>
@@ -114,6 +134,56 @@
     </div>
   </div>
 </section>
+<section id="calendar-view" class="calendar-view" aria-labelledby="calendar-title" hidden>
+  <div class="calendar-heading">
+    <h1 id="calendar-title">Calendar</h1>
+    <div class="calendar-nav" role="group" aria-label="Change month">
+      <button type="button" class="calendar-nav-button" id="calendar-prev" aria-label="Previous month" title="Previous month">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+      </button>
+      <button type="button" class="calendar-today-button" id="calendar-today-button" title="Jump to the current month">Today</button>
+      <button type="button" class="calendar-nav-button" id="calendar-next" aria-label="Next month" title="Next month">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="calendar-capture" aria-label="Schedule a dated task">
+    <input id="calendar-quick-add" type="text" placeholder="Type a task and press Enter…" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" inputmode="text" aria-label="Add a task with a date">
+    <div class="calendar-date-wrap">
+      <button type="button" class="calendar-date-button" id="calendar-date-button" aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar-date-popover" title="Pick a date">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v13H5zM5 10.5h14M9 3.5v4M15 3.5v4"/></svg>
+        <span id="calendar-date-label">Today</span>
+      </button>
+      <div class="calendar-date-popover" id="calendar-date-popover" role="dialog" aria-label="Pick a task date" hidden>
+        <div class="date-popover-head">
+          <button type="button" class="date-popover-nav" id="date-popover-prev" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+          </button>
+          <span class="date-popover-title" id="date-popover-title">—</span>
+          <button type="button" class="date-popover-nav" id="date-popover-next" aria-label="Next month">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="date-popover-weekdays" aria-hidden="true"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+        <div class="date-popover-grid" id="date-popover-grid" role="grid" aria-label="Days"></div>
+      </div>
+    </div>
+    <span class="enter-key" aria-hidden="true">Enter <svg class="enter-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Add</span>
+  </div>
+  <div class="calendar-board">
+    <div class="calendar-weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+    <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="Month calendar"></div>
+  </div>
+  <div class="calendar-day-popover" id="calendar-day-popover" role="dialog" aria-labelledby="calendar-day-popover-date" hidden>
+    <div class="calendar-day-popover-head">
+      <h3><span id="calendar-day-popover-date">—</span><span class="calendar-day-popover-count" id="calendar-day-popover-count" aria-live="polite">0</span></h3>
+      <button type="button" class="calendar-day-popover-close" id="calendar-day-popover-close" aria-label="Close day tasks" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="calendar-day-popover-list" id="calendar-day-popover-list" role="list"></div>
+  </div>
+</section>
 <section id="archive-view" class="archive-view" aria-labelledby="archive-title" hidden>
   <div class="archive-heading">
     <div>
@@ -135,7 +205,7 @@
 </div>
 </div>
 <script type="module" src="ascii-background.js?v=2"></script>
-<script src="app.js?v=28"></script>
+<script src="app.js?v=35"></script>
 <script src="metal-shader.js?v=1"></script>
 </body>
 </html>

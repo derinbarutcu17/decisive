@@ -53,6 +53,10 @@ let scatterNamesVisible = false;
 let metalEffectEnabled = true;
 let originalLayoutEnabled = false;
 let eliminateRecovery = null;
+let calendarMonth = null;
+let calendarPicker = null;
+let matrixPicker = null;
+let calendarDayPopoverDate = '';
 
 // Labels are allowed to avoid nearby labels, but they are never allowed to
 // become a second, global layout system. These limits keep every name tethered
@@ -134,6 +138,7 @@ function previewMutationFallback(method, path, body = {}) {
       archivedAt: null,
       importance: defaults.importance,
       urgency: defaults.urgency,
+      dueDate: body.dueDate || null,
     };
   }
   if (method !== 'PATCH') return null;
@@ -1591,10 +1596,14 @@ function cardEl(t, { readOnly = false } = {}) {
   li.dataset.id = t.id;
   const actionLabel = 'Archive task';
   const confirmLabel = 'Confirm archive task';
+  const due = parseISODate(t.dueDate);
+  const dueTag = due ? '<span class="card-due"></span>' : '';
   const eliminateAction = !t.done && t.quadrant !== 'eliminate'
     ? `<button type="button" class="eliminate-task" aria-label="Move task to Eliminate" title="Move to Eliminate"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></button>`
     : '';
-  li.innerHTML = `<button type="button" class="check" role="checkbox" aria-checked="${t.done}" aria-pressed="${t.done}"><svg viewBox="0 0 10.1668 10.1668" aria-hidden="true" focusable="false"><path d="M1 5.52L3.92 9.17L9.17 1"></path></svg></button><div class="content" tabindex="0" role="button">${cardBodyHtml(t)}</div><div class="card-actions">${eliminateAction}<button type="button" class="delete" aria-label="${actionLabel}" title="${actionLabel}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg></button><span class="delete-actions" hidden><button type="button" class="delete-cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><button type="button" class="delete-approve" aria-label="${confirmLabel}" title="${confirmLabel}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></span></div>`;
+  li.innerHTML = `<button type="button" class="check" role="checkbox" aria-checked="${t.done}" aria-pressed="${t.done}"><svg viewBox="0 0 10.1668 10.1668" aria-hidden="true" focusable="false"><path d="M1 5.52L3.92 9.17L9.17 1"></path></svg></button><div class="content" tabindex="0" role="button">${cardBodyHtml(t)}</div>${dueTag}<div class="card-actions">${eliminateAction}<button type="button" class="delete" aria-label="${actionLabel}" title="${actionLabel}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg></button><span class="delete-actions" hidden><button type="button" class="delete-cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><button type="button" class="delete-approve" aria-label="${confirmLabel}" title="${confirmLabel}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></button></span></div>`;
+  const dueEl = li.querySelector('.card-due');
+  if (dueEl) dueEl.textContent = formatCalendarDate(due);
   fillBody(li, t);
   setCheckState(li, t);
   setContentLabel(li, t);
@@ -1816,7 +1825,7 @@ $('#quick-add').addEventListener('keydown', async e => {
   e.target.disabled = true;
   e.target.setAttribute('aria-busy', 'true');
   let t;
-  try { t = await api('POST', API, { title: val, quadrant: 'do' }); }
+  try { t = await api('POST', API, { title: val, quadrant: 'do', dueDate: matrixPicker ? matrixPicker.get() : null }); }
   catch { showSaveError(); return; }
   finally {
     captureBusy = false;
@@ -1852,6 +1861,7 @@ function render() {
   updateCounts();
   renderScatter();
   renderArchive();
+  if (currentView === 'calendar') renderCalendar();
 }
 
 function renderArchive() {
@@ -2117,19 +2127,352 @@ window.addEventListener('resize', () => {
   positionViewSwitchPill(false);
 });
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
+function shiftMonth(date, delta) { return new Date(date.getFullYear(), date.getMonth() + delta, 1); }
+function toISODate(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+function parseISODate(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+  if (!m) return null;
+  const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+function sameDay(a, b) { return Boolean(a && b) && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+function mondayOffset(date) { return (date.getDay() + 6) % 7; }
+function formatCalendarDate(date) { return date ? `${MONTH_NAMES[date.getMonth()].slice(0, 3)} ${date.getDate()}` : ''; }
+
+function calendarItemsFor(iso) {
+  // The calendar shows only live, actionable work: completed, archived, and
+  // eliminated tasks live on their own surfaces and stay out of the grid.
+  return tasks.filter(t => !t.archived && !t.done && t.quadrant !== 'eliminate' && t.dueDate === iso);
+}
+
+function openCalendarDayPopover(iso) {
+  const popover = $('#calendar-day-popover');
+  const list = $('#calendar-day-popover-list');
+  if (!popover || !list) return;
+  const cell = document.querySelector(`.calendar-day[data-date="${iso}"]`);
+  const items = calendarItemsFor(iso);
+  if (!cell || !items.length) { closeCalendarDayPopover(); return; }
+  calendarDayPopoverDate = iso;
+  const date = parseISODate(iso);
+  const dateLabel = $('#calendar-day-popover-date');
+  const countLabel = $('#calendar-day-popover-count');
+  if (dateLabel) dateLabel.textContent = date ? `${new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(date)} · ${formatCalendarDate(date)}` : iso;
+  if (countLabel) countLabel.textContent = String(items.length);
+  list.textContent = '';
+  items.forEach(t => {
+    const card = cardEl(t, { readOnly: true });
+    card.draggable = false;
+    card.dataset.quadrant = t.quadrant;
+    const check = card.querySelector('.check');
+    if (check) {
+      check.disabled = false;
+      check.setAttribute('aria-label', t.done ? `Mark “${t.title || 'task'}” as not done` : `Complete “${t.title || 'task'}”`);
+      check.addEventListener('click', e => {
+        e.stopPropagation();
+        void completeFromCalendarPopover(card, t);
+      });
+    }
+    list.appendChild(card);
+  });
+  popover.hidden = false;
+  positionCalendarDayPopover(cell);
+}
+
+async function completeFromCalendarPopover(card, t) {
+  if (card.dataset.busy === 'true') return;
+  card.dataset.busy = 'true';
+  const target = !t.done;
+  try {
+    const updated = await api('PATCH', `${API}/${t.id}`, { done: target });
+    const archivedOverflowIds = new Set(updated.archivedOverflowIds || []);
+    Object.assign(t, updated);
+    tasks.forEach(task => {
+      if (archivedOverflowIds.has(String(task.id))) {
+        task.archived = true;
+        task.archivedAt = task.archivedAt || new Date().toISOString();
+      }
+    });
+    if (target && eliminateRecovery?.taskId === String(t.id)) clearEliminateRecovery();
+    // render() refreshes the calendar grid and re-syncs the open day popup;
+    // a completed task leaves the calendar surface, so its row disappears.
+    render();
+    showSaveSuccess();
+  } catch {
+    card.dataset.busy = '';
+    showSaveError();
+  }
+}
+
+function positionCalendarDayPopover(cell) {
+  const panel = $('#calendar-view');
+  const popover = $('#calendar-day-popover');
+  if (!panel || !popover || !cell) return;
+  const panelRect = panel.getBoundingClientRect();
+  const cellRect = cell.getBoundingClientRect();
+  const gap = 10;
+  const edge = 10;
+  const visibleBottom = Math.min(panelRect.height, window.innerHeight - panelRect.top);
+  popover.style.maxHeight = `${Math.max(180, Math.min(340, visibleBottom - edge * 2))}px`;
+  const width = popover.offsetWidth;
+  const height = popover.offsetHeight;
+  let left = cellRect.right - panelRect.left + gap;
+  if (left + width > panelRect.width - edge) left = cellRect.left - panelRect.left - gap - width;
+  if (left < edge) left = Math.max(edge, Math.min(cellRect.left - panelRect.left, panelRect.width - width - edge));
+  let top = cellRect.top - panelRect.top;
+  top = Math.max(edge, Math.min(top, visibleBottom - height - edge));
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.top = `${Math.round(top)}px`;
+}
+
+function closeCalendarDayPopover() {
+  calendarDayPopoverDate = '';
+  const popover = $('#calendar-day-popover');
+  if (popover) popover.hidden = true;
+}
+
+function createDatePicker({ buttonId, labelId, popoverId, titleId, gridId, prevId, nextId, emptyLabel = 'Date', initial = '', onChange = null }) {
+  const button = $(buttonId);
+  const label = $(labelId);
+  const popover = $(popoverId);
+  const title = $(titleId);
+  const grid = $(gridId);
+  let picked = initial || '';
+  let month = startOfMonth(new Date());
+
+  function renderLabel() {
+    const date = parseISODate(picked);
+    if (label) label.textContent = date ? (sameDay(date, new Date()) ? 'Today' : formatCalendarDate(date)) : emptyLabel;
+    if (button) {
+      button.classList.toggle('is-empty', !date);
+      button.title = date ? `Task date: ${date.toDateString()}` : 'Pick a date';
+    }
+  }
+
+  function renderPopover() {
+    if (!grid) return;
+    if (title) title.textContent = `${MONTH_NAMES[month.getMonth()]} ${month.getFullYear()}`;
+    const today = new Date();
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(1 - mondayOffset(first));
+    const days = [];
+    for (let i = 0; i < 42; i += 1) {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const iso = toISODate(date);
+      const classes = ['date-popover-day'];
+      if (date.getMonth() !== month.getMonth()) classes.push('is-outside');
+      if (sameDay(date, today)) classes.push('is-today');
+      if (iso === picked) classes.push('is-selected');
+      days.push(`<button type="button" class="${classes.join(' ')}" data-date="${iso}" aria-pressed="${iso === picked}">${date.getDate()}</button>`);
+    }
+    grid.innerHTML = days.join('');
+    renderLabel();
+  }
+
+  function clampPopover() {
+    if (!popover || popover.hidden) return;
+    popover.style.transform = '';
+    const rect = popover.getBoundingClientRect();
+    const margin = 8;
+    let shift = 0;
+    if (rect.left < margin) shift = margin - rect.left;
+    else if (rect.right > window.innerWidth - margin) shift = (window.innerWidth - margin) - rect.right;
+    if (shift) popover.style.transform = `translateX(${Math.round(shift)}px)`;
+  }
+
+  function open() {
+    if (!popover) return;
+    month = startOfMonth(parseISODate(picked) || new Date());
+    popover.hidden = false;
+    button?.setAttribute('aria-expanded', 'true');
+    renderPopover();
+    clampPopover();
+  }
+  function close() {
+    if (!popover) return;
+    popover.hidden = true;
+    popover.style.transform = '';
+    button?.setAttribute('aria-expanded', 'false');
+  }
+  function pick(iso) {
+    picked = iso || '';
+    renderLabel();
+    close();
+    if (onChange) onChange(picked);
+  }
+  function set(iso) {
+    picked = iso || '';
+    renderLabel();
+    if (onChange) onChange(picked);
+  }
+
+  button?.addEventListener('click', () => { if (popover?.hidden) open(); else close(); });
+  $(prevId)?.addEventListener('click', () => { month = shiftMonth(month, -1); renderPopover(); });
+  $(nextId)?.addEventListener('click', () => { month = shiftMonth(month, 1); renderPopover(); });
+  grid?.addEventListener('click', e => {
+    const day = e.target.closest('.date-popover-day');
+    if (!day || !day.dataset.date) return;
+    pick(day.dataset.date);
+  });
+  document.addEventListener('click', e => {
+    if (!popover || popover.hidden) return;
+    if (e.target.closest('.calendar-date-wrap')) return;
+    close();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && popover && !popover.hidden) close();
+  });
+  window.addEventListener('resize', clampPopover);
+
+  renderLabel();
+  return { open, close, pick, set, get: () => picked };
+}
+
+function renderCalendar() {
+  const title = $('#calendar-title');
+  const grid = $('#calendar-grid');
+  if (!grid) return;
+  if (!calendarMonth) calendarMonth = startOfMonth(new Date());
+  if (title) title.textContent = `${MONTH_NAMES[calendarMonth.getMonth()]} ${calendarMonth.getFullYear()}`;
+  const today = new Date();
+  const picked = calendarPicker ? calendarPicker.get() : '';
+  const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const start = new Date(first);
+  start.setDate(1 - mondayOffset(first));
+  const taskTitles = new Map();
+  const cells = [];
+  for (let i = 0; i < 42; i += 1) {
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const iso = toISODate(date);
+    const classes = ['calendar-day'];
+    if (date.getMonth() !== calendarMonth.getMonth()) classes.push('is-outside');
+    if (sameDay(date, today)) classes.push('is-today');
+    if (iso === picked) classes.push('is-picked');
+    const items = calendarItemsFor(iso);
+    const visible = items.slice(0, 3).map(t => {
+      taskTitles.set(String(t.id), t.title);
+      return `<div class="calendar-task" data-quadrant="${t.quadrant}" data-task-id="${t.id}"><span class="calendar-task-bar" aria-hidden="true"></span><span class="calendar-task-title"></span></div>`;
+    }).join('');
+    const more = items.length > 3 ? `<div class="calendar-more">+${items.length - 3} more</div>` : '';
+    const label = date.getDate() === 1 ? `${MONTH_NAMES[date.getMonth()].slice(0, 3)} 1` : String(date.getDate());
+    cells.push(`<div class="${classes.join(' ')}" data-date="${iso}" role="gridcell" aria-label="${iso}"><span class="calendar-day-number">${label}</span><div class="calendar-day-tasks">${visible}${more}</div></div>`);
+  }
+  grid.innerHTML = cells.join('');
+  grid.querySelectorAll('.calendar-task[data-task-id]').forEach(el => {
+    const full = taskTitles.get(el.dataset.taskId);
+    el.querySelector('.calendar-task-title').textContent = full || '';
+    if (full) el.title = full;
+  });
+  if (calendarDayPopoverDate) openCalendarDayPopover(calendarDayPopoverDate);
+}
+
+function setupCalendar() {
+  const grid = $('#calendar-grid');
+  const input = $('#calendar-quick-add');
+  if (!grid) return;
+
+  calendarMonth = startOfMonth(new Date());
+  calendarPicker = createDatePicker({
+    buttonId: '#calendar-date-button',
+    labelId: '#calendar-date-label',
+    popoverId: '#calendar-date-popover',
+    titleId: '#date-popover-title',
+    gridId: '#date-popover-grid',
+    prevId: '#date-popover-prev',
+    nextId: '#date-popover-next',
+    initial: toISODate(new Date()),
+    onChange: () => renderCalendar(),
+  });
+
+  $('#calendar-prev')?.addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, -1); renderCalendar(); });
+  $('#calendar-next')?.addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, 1); renderCalendar(); });
+  $('#calendar-today-button')?.addEventListener('click', () => { calendarMonth = startOfMonth(new Date()); renderCalendar(); });
+
+  grid.addEventListener('click', e => {
+    const cell = e.target.closest('.calendar-day');
+    if (!cell || !cell.dataset.date) return;
+    calendarPicker.set(cell.dataset.date);
+    openCalendarDayPopover(cell.dataset.date);
+  });
+
+  const dayPopover = $('#calendar-day-popover');
+  $('#calendar-day-popover-close')?.addEventListener('click', () => closeCalendarDayPopover());
+  window.addEventListener('resize', () => {
+    if (!calendarDayPopoverDate) return;
+    const cell = document.querySelector(`.calendar-day[data-date="${calendarDayPopoverDate}"]`);
+    if (cell) positionCalendarDayPopover(cell);
+    else closeCalendarDayPopover();
+  });
+  document.addEventListener('click', e => {
+    if (!dayPopover || dayPopover.hidden) return;
+    if (e.target.closest('#calendar-day-popover') || e.target.closest('.calendar-day')) return;
+    closeCalendarDayPopover();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCalendarDayPopover();
+  });
+
+  input?.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    const val = e.target.value.trim();
+    if (!val || captureBusy) return;
+    captureBusy = true;
+    e.target.disabled = true;
+    e.target.setAttribute('aria-busy', 'true');
+    let t;
+    try { t = await api('POST', API, { title: val, quadrant: 'do', dueDate: calendarPicker.get() }); }
+    catch { showSaveError(); return; }
+    finally {
+      captureBusy = false;
+      e.target.disabled = false;
+      e.target.removeAttribute('aria-busy');
+      e.target.focus();
+    }
+    tasks.push(t);
+    e.target.value = '';
+    render();
+    showSaveSuccess();
+  });
+}
+
+function setupMatrixCapture() {
+  matrixPicker = createDatePicker({
+    buttonId: '#matrix-date-button',
+    labelId: '#matrix-date-label',
+    popoverId: '#matrix-date-popover',
+    titleId: '#matrix-date-title',
+    gridId: '#matrix-date-grid',
+    prevId: '#matrix-date-prev',
+    nextId: '#matrix-date-next',
+    initial: toISODate(new Date()),
+  });
+}
+
 function setView(view) {
-  currentView = ['scatter', 'archive'].includes(view) ? view : 'matrix';
+  currentView = ['scatter', 'archive', 'calendar'].includes(view) ? view : 'matrix';
   const scatterActive = currentView === 'scatter';
   const archiveActive = currentView === 'archive';
+  const calendarActive = currentView === 'calendar';
   const layout = $('#layout');
-  $('#console')?.classList.toggle('matrix-mode', !scatterActive && !archiveActive);
+  $('#console')?.classList.toggle('matrix-mode', !scatterActive && !archiveActive && !calendarActive);
   $('#console')?.classList.toggle('scatter-mode', scatterActive);
+  $('#console')?.classList.toggle('calendar-mode', calendarActive);
+  if (!calendarActive) closeCalendarDayPopover();
   layout.classList.toggle('scatter-mode', scatterActive);
   layout.classList.toggle('archive-mode', archiveActive);
-  $('#matrix').hidden = scatterActive || archiveActive;
+  layout.classList.toggle('calendar-mode', calendarActive);
+  $('#matrix').hidden = scatterActive || archiveActive || calendarActive;
   $('#scatter-view').hidden = !scatterActive;
   $('#archive-view').hidden = !archiveActive;
-  $('#done').hidden = archiveActive;
+  $('#calendar-view').hidden = !calendarActive;
+  $('#done').hidden = archiveActive || calendarActive;
   const namesButton = $('#scatter-names-button');
   if (namesButton) namesButton.hidden = !scatterActive;
   $('#scatter-view').classList.toggle('names-visible', scatterNamesVisible);
@@ -2142,10 +2485,12 @@ function setView(view) {
   viewSwitchPillReady = true;
   if (scatterActive) renderScatter();
   else if (archiveActive) renderArchive();
+  else if (calendarActive) renderCalendar();
   else render();
   const url = new URL(location.href);
   if (scatterActive) url.searchParams.set('view', 'scatter');
   else if (archiveActive) url.searchParams.set('view', 'archive');
+  else if (calendarActive) url.searchParams.set('view', 'calendar');
   else url.searchParams.delete('view');
   history.replaceState(null, '', url.pathname + url.search + url.hash);
 }
@@ -2171,7 +2516,9 @@ setupDoneDeleteActions();
 setupArchiveDeleteActions();
 setupEliminateRecovery();
 setupSettings();
+setupCalendar();
+setupMatrixCapture();
 const initialView = new URLSearchParams(location.search).get('view');
-setView(['scatter', 'archive'].includes(initialView) ? initialView : 'matrix');
+setView(['scatter', 'archive', 'calendar'].includes(initialView) ? initialView : 'matrix');
 
 load();
