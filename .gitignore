@@ -15,3 +15,6 @@ logo.png
 decisive-mark-transparent.png
 fonts/Lato-*.ttf
 fonts/PTSerif-*.ttf
+
+# Local data snapshots are never committed.
+backups/

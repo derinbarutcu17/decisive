@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,7 @@ import { exec } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
+const BACKUP_DIR = path.join(path.dirname(DATA_FILE), 'backups');
 const DEMO_DATA_FILE = path.join(__dirname, 'examples', 'demo-data.json');
 const PORT = process.env.PORT || 4321;
 const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'];
@@ -74,8 +75,27 @@ async function load() {
     await save();
   }
 }
+// Never lose task history: keep one dated snapshot per day next to the data
+// file, plus labelled snapshots before destructive operations. Backups are
+// never pruned automatically.
+async function snapshotBackup(name) {
+  try {
+    const target = path.join(BACKUP_DIR, name);
+    try { await access(target); return; } catch {}
+    await mkdir(BACKUP_DIR, { recursive: true });
+    await copyFile(DATA_FILE, target);
+  } catch {}
+}
+
+async function dailyBackup() {
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  await snapshotBackup(`data-${stamp}.json`);
+}
+
 function save() {
   saveQueue = saveQueue.catch(() => {}).then(async () => {
+    await dailyBackup();
     // Snapshot at the point the queued write begins. This prevents an older
     // request from overwriting a newer change when several interactions land
     // in the same event loop turn.
@@ -166,6 +186,9 @@ const server = http.createServer(async (req, res) => {
         const restored = fixture
           .filter(task => String(task.id).startsWith('demo-'))
           .map(task => ({ ...task }));
+        const now = new Date();
+        const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        await snapshotBackup(`data-${stamp}-pre-restore.json`);
         tasks = restored;
         await saveWithRollback(snapshot);
         return json(200, { ok: true, restored: restored.length, tasks: cloneTasks() });

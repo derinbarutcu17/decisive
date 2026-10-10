@@ -1,5 +1,21 @@
 # Decisive project agent notes
 
+## Agent control
+
+- Any local agent controls this app through the `decisive` CLI on PATH
+  (`~/.local/bin/decisive`, source: `cli/decisive.mjs`):
+  `decisive list/show/add/edit/done/archive/restore/rm`, `--json` everywhere,
+  unique id prefixes accepted. Run `decisive help` for the full surface.
+- The CLI talks to the app's local HTTP API (127.0.0.1:4321) and starts a
+  headless server with the same data file when the app is closed.
+- Raw API: `GET/POST /api/tasks`, `PATCH/DELETE /api/tasks/:id`
+  (fields: title, note, quadrant, importance, urgency, dueDate, done,
+  archived, order; archiving requires done first).
+- Data safety: the server keeps dated snapshots in a `backups/` folder next to
+  the data file (`~/Library/Application Support/eisenhower/backups/`) plus
+  `pre-restore` snapshots before any demo reset. Never delete task history or
+  backups; archive instead of removing.
+
 ## Delegation
 
 - Delegate broadly for non-trivial work whenever subagent capacity is available; do not impose an arbitrary project-local numeric cap.
