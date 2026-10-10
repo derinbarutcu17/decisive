@@ -2360,15 +2360,36 @@ function renderCalendar() {
       taskTitles.set(String(t.id), t.title);
       return `<div class="calendar-task" data-quadrant="${t.quadrant}" data-task-id="${t.id}"><span class="calendar-task-bar" aria-hidden="true"></span><span class="calendar-task-title"></span></div>`;
     }).join('');
-    const more = items.length > 3 ? `<div class="calendar-more">+${items.length - 3} more</div>` : '';
     const label = date.getDate() === 1 ? `${MONTH_NAMES[date.getMonth()].slice(0, 3)} 1` : String(date.getDate());
-    cells.push(`<div class="${classes.join(' ')}" data-date="${iso}" role="gridcell" aria-label="${iso}"><span class="calendar-day-number">${label}</span><div class="calendar-day-tasks">${visible}${more}</div></div>`);
+    cells.push(`<div class="${classes.join(' ')}" data-date="${iso}" data-task-count="${items.length}" role="gridcell" aria-label="${iso}"><span class="calendar-day-number">${label}</span><div class="calendar-day-tasks">${visible}</div></div>`);
   }
   grid.innerHTML = cells.join('');
   grid.querySelectorAll('.calendar-task[data-task-id]').forEach(el => {
     const full = taskTitles.get(el.dataset.taskId);
     el.querySelector('.calendar-task-title').textContent = full || '';
     if (full) el.title = full;
+  });
+  // Short cells (small windows) show fewer chips and count the rest, so chips
+  // are never chopped mid-row by the cell bounds.
+  const firstCellHeight = grid.querySelector('.calendar-day')?.getBoundingClientRect().height || 999;
+  const capacity = firstCellHeight >= 98 ? 3 : firstCellHeight >= 68 ? 2 : 1;
+  grid.querySelectorAll('.calendar-day').forEach(cellEl => {
+    const total = Number(cellEl.dataset.taskCount || 0);
+    if (!total) return;
+    const chips = [...cellEl.querySelectorAll('.calendar-task')];
+    if (chips.length > capacity) chips.slice(capacity).forEach(chip => chip.remove());
+    const remainder = total - Math.min(chips.length, capacity);
+    let moreEl = cellEl.querySelector('.calendar-more');
+    if (remainder > 0) {
+      if (!moreEl) {
+        moreEl = document.createElement('div');
+        moreEl.className = 'calendar-more';
+        cellEl.querySelector('.calendar-day-tasks').appendChild(moreEl);
+      }
+      moreEl.textContent = `+${remainder} more`;
+    } else if (moreEl) {
+      moreEl.remove();
+    }
   });
   if (calendarDayPopoverDate) openCalendarDayPopover(calendarDayPopoverDate);
 }

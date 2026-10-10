@@ -18,7 +18,7 @@ app.whenReady().then(async () => {
       "  const ok = (name, condition) => out.push((condition ? 'PASS ' : 'FAIL ') + name);",
       '  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));',
       '  await wait(250);',
-      "  document.querySelector('.view-button[data-view=\"scatter\"]').click();",
+      "  window.setView('scatter');",
       '  await wait(120);',
       "  const plot = document.querySelector('#scatter-plot');",
       "  const plotRect = plot.getBoundingClientRect();",

@@ -10,6 +10,7 @@ const LEGACY_DATA_DIR = 'eisenhower';
 let server = null;
 let mainWindow = null;
 let tray = null;
+let isQuitting = false;
 
 const WINDOW_SIZE_PRESETS = [
   { label: 'Compact', width: 1080, height: 720 },
@@ -135,6 +136,14 @@ app.whenReady().then(async () => {
     autoHideMenuBar: true,
   });
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
+  // The red traffic light (and Cmd+W) minimizes instead of quitting: the app
+  // keeps running in the Dock and menu bar. Quit stays available via Cmd+Q
+  // and the tray menu, which flip isQuitting in before-quit.
+  mainWindow.on('close', event => {
+    if (isQuitting) return;
+    event.preventDefault();
+    mainWindow.minimize();
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
     app.quit();
@@ -142,7 +151,13 @@ app.whenReady().then(async () => {
   createTray();
 });
 
+app.on('activate', () => {
+  // Clicking the Dock icon restores a minimized window instead of doing nothing.
+  focusWindow();
+});
+
 app.on('before-quit', () => {
+  isQuitting = true;
   tray?.destroy();
   tray = null;
   stopServer();
