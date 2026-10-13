@@ -57,6 +57,13 @@ let calendarMonth = null;
 let calendarPicker = null;
 let matrixPicker = null;
 let calendarDayPopoverDate = '';
+let calendarDraggedTaskId = null;
+let calendarDropCell = null;
+
+function clearCalendarDropTarget() {
+  calendarDropCell?.classList.remove('is-drop-target');
+  calendarDropCell = null;
+}
 
 // Labels are allowed to avoid nearby labels, but they are never allowed to
 // become a second, global layout system. These limits keep every name tethered
@@ -159,6 +166,9 @@ function previewMutationFallback(method, path, body = {}) {
 }
 
 async function api(method, path, body) {
+  // Signed-in cloud sessions take precedence over every local path: the board
+  // reads and writes the account's own Supabase rows (Row Level Security).
+  if (window.DecisiveCloud?.isActive()) return window.DecisiveCloud.request(method, path, body);
   if (method !== 'GET') {
     // Vercel functions are stateless, so preview mutations must stay local.
     const previewFallback = previewMutationFallback(method, path, body);
@@ -222,18 +232,21 @@ async function load() {
     const remoteTasks = await api('GET', API);
     // The hosted preview is intentionally local-first. Vercel functions are
     // ephemeral, so a cold start must never erase a visitor's current board.
-    tasks = readPreviewTasks() ?? remoteTasks;
+    // A signed-in cloud session always wins over that preview cache.
+    tasks = (isPreviewMode() && !window.DecisiveCloud?.isActive() ? readPreviewTasks() : null) ?? remoteTasks;
     render();
     persistPreviewTasks();
     setStatus('');
   } catch {
-    if (cachedTasks) {
+    if (cachedTasks && !window.DecisiveCloud?.isActive()) {
       tasks = cachedTasks;
       render();
       setStatus('');
       return;
     }
-    setStatus('Couldn’t load local data. Refresh to retry.', 'error');
+    setStatus(window.DecisiveCloud?.isActive()
+      ? 'Couldn’t load your cloud board. Refresh to retry.'
+      : 'Couldn’t load local data. Refresh to retry.', 'error');
   }
 }
 
@@ -1597,7 +1610,7 @@ function cardEl(t, { readOnly = false } = {}) {
   const actionLabel = 'Archive task';
   const confirmLabel = 'Confirm archive task';
   const due = parseISODate(t.dueDate);
-  const dueTag = due ? '<span class="card-due"></span>' : '';
+  const dueTag = due ? '<button type="button" class="card-due" aria-label="Change due date" title="Change due date"></button>' : '';
   const eliminateAction = !t.done && t.quadrant !== 'eliminate'
     ? `<button type="button" class="eliminate-task" aria-label="Move task to Eliminate" title="Move to Eliminate"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></button>`
     : '';
@@ -1622,6 +1635,11 @@ function cardEl(t, { readOnly = false } = {}) {
   eliminateButton?.addEventListener('click', e => {
     e.stopPropagation();
     void moveTaskToEliminate(li, t);
+  });
+  const dueButton = li.querySelector('.card-due');
+  dueButton?.addEventListener('click', e => {
+    e.stopPropagation();
+    openCardDatePicker(dueButton, t);
   });
   const deleteButton = li.querySelector('.delete');
   const deleteActions = li.querySelector('.delete-actions');
@@ -2237,9 +2255,9 @@ function closeCalendarDayPopover() {
   if (popover) popover.hidden = true;
 }
 
-function createDatePicker({ buttonId, labelId, popoverId, titleId, gridId, prevId, nextId, emptyLabel = 'Date', initial = '', onChange = null }) {
-  const button = $(buttonId);
-  const label = $(labelId);
+function createDatePicker({ buttonId = '', labelId = '', popoverId, titleId, gridId, prevId, nextId, emptyLabel = 'Date', initial = '', floating = false, onChange = null }) {
+  const button = buttonId ? $(buttonId) : null;
+  const label = labelId ? $(labelId) : null;
   const popover = $(popoverId);
   const title = $(titleId);
   const grid = $(gridId);
@@ -2287,19 +2305,39 @@ function createDatePicker({ buttonId, labelId, popoverId, titleId, gridId, prevI
     if (shift) popover.style.transform = `translateX(${Math.round(shift)}px)`;
   }
 
-  function open() {
+  function open(anchorEl) {
     if (!popover) return;
+    if (floating && !anchorEl) return;
     month = startOfMonth(parseISODate(picked) || new Date());
     popover.hidden = false;
     button?.setAttribute('aria-expanded', 'true');
+    if (floating) {
+      popover.__anchor?.setAttribute('aria-expanded', 'false');
+      popover.__anchor = anchorEl;
+      anchorEl.setAttribute('aria-expanded', 'true');
+    }
     renderPopover();
-    clampPopover();
+    if (floating) {
+      const rect = anchorEl.getBoundingClientRect();
+      const width = popover.offsetWidth;
+      const height = popover.offsetHeight;
+      let left = rect.right - width;
+      left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+      let top = rect.bottom + 8;
+      if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 8);
+      popover.style.left = `${Math.round(left)}px`;
+      popover.style.top = `${Math.round(top)}px`;
+    } else {
+      clampPopover();
+    }
   }
   function close() {
     if (!popover) return;
     popover.hidden = true;
     popover.style.transform = '';
     button?.setAttribute('aria-expanded', 'false');
+    popover.__anchor?.setAttribute('aria-expanded', 'false');
+    popover.__anchor = null;
   }
   function pick(iso) {
     picked = iso || '';
@@ -2307,10 +2345,10 @@ function createDatePicker({ buttonId, labelId, popoverId, titleId, gridId, prevI
     close();
     if (onChange) onChange(picked);
   }
-  function set(iso) {
+  function set(iso, { silent = false } = {}) {
     picked = iso || '';
     renderLabel();
-    if (onChange) onChange(picked);
+    if (!silent && onChange) onChange(picked);
   }
 
   button?.addEventListener('click', () => { if (popover?.hidden) open(); else close(); });
@@ -2323,13 +2361,17 @@ function createDatePicker({ buttonId, labelId, popoverId, titleId, gridId, prevI
   });
   document.addEventListener('click', e => {
     if (!popover || popover.hidden) return;
-    if (e.target.closest('.calendar-date-wrap')) return;
+    if (e.target.closest('.calendar-date-wrap') || e.target.closest('.card-due')) return;
     close();
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && popover && !popover.hidden) close();
   });
-  window.addEventListener('resize', clampPopover);
+  window.addEventListener('resize', () => {
+    if (!popover || popover.hidden) return;
+    if (floating) close();
+    else clampPopover();
+  });
 
   renderLabel();
   return { open, close, pick, set, get: () => picked };
@@ -2358,7 +2400,7 @@ function renderCalendar() {
     const items = calendarItemsFor(iso);
     const visible = items.slice(0, 3).map(t => {
       taskTitles.set(String(t.id), t.title);
-      return `<div class="calendar-task" data-quadrant="${t.quadrant}" data-task-id="${t.id}"><span class="calendar-task-bar" aria-hidden="true"></span><span class="calendar-task-title"></span></div>`;
+      return `<div class="calendar-task" draggable="true" data-quadrant="${t.quadrant}" data-task-id="${t.id}"><span class="calendar-task-bar" aria-hidden="true"></span><span class="calendar-task-title"></span></div>`;
     }).join('');
     const label = date.getDate() === 1 ? `${MONTH_NAMES[date.getMonth()].slice(0, 3)} 1` : String(date.getDate());
     cells.push(`<div class="${classes.join(' ')}" data-date="${iso}" data-task-count="${items.length}" role="gridcell" aria-label="${iso}"><span class="calendar-day-number">${label}</span><div class="calendar-day-tasks">${visible}</div></div>`);
@@ -2423,6 +2465,59 @@ function setupCalendar() {
     openCalendarDayPopover(cell.dataset.date);
   });
 
+  // Drag a task chip onto another day to reschedule it.
+  grid.addEventListener('dragstart', e => {
+    const chip = e.target.closest('.calendar-task');
+    if (!chip || !chip.dataset.taskId) return;
+    calendarDraggedTaskId = chip.dataset.taskId;
+    chip.classList.add('is-dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', chip.dataset.taskId);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  });
+  grid.addEventListener('dragend', e => {
+    e.target.closest('.calendar-task')?.classList.remove('is-dragging');
+    clearCalendarDropTarget();
+    calendarDraggedTaskId = null;
+  });
+  grid.addEventListener('dragover', e => {
+    if (!calendarDraggedTaskId) return;
+    const cell = e.target.closest('.calendar-day');
+    if (!cell) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    if (calendarDropCell !== cell) {
+      clearCalendarDropTarget();
+      calendarDropCell = cell;
+      cell.classList.add('is-drop-target');
+    }
+  });
+  grid.addEventListener('dragleave', e => {
+    const cell = e.target.closest('.calendar-day');
+    if (cell && cell === calendarDropCell && !cell.contains(e.relatedTarget)) clearCalendarDropTarget();
+  });
+  grid.addEventListener('drop', async e => {
+    const cell = e.target.closest('.calendar-day');
+    if (!cell || !cell.dataset.date) return;
+    e.preventDefault();
+    const id = calendarDraggedTaskId || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
+    const iso = cell.dataset.date;
+    clearCalendarDropTarget();
+    calendarDraggedTaskId = null;
+    if (!id) return;
+    const task = tasks.find(t => String(t.id) === String(id));
+    if (!task || task.dueDate === iso) return;
+    try {
+      const updated = await api('PATCH', `${API}/${task.id}`, { dueDate: iso });
+      Object.assign(task, updated);
+      render();
+      showSaveSuccess();
+    } catch {
+      showSaveError();
+    }
+  });
+
   const dayPopover = $('#calendar-day-popover');
   $('#calendar-day-popover-close')?.addEventListener('click', () => closeCalendarDayPopover());
   window.addEventListener('resize', () => {
@@ -2474,6 +2569,63 @@ function setupMatrixCapture() {
     nextId: '#matrix-date-next',
     initial: toISODate(new Date()),
   });
+}
+
+let cardDatePicker = null;
+let cardDateTask = null;
+
+function openCardDatePicker(chipEl, task) {
+  if (!cardDatePicker) return;
+  cardDateTask = task;
+  cardDatePicker.set(task.dueDate || toISODate(new Date()), { silent: true });
+  cardDatePicker.open(chipEl);
+}
+
+function setupCardDatePicker() {
+  cardDatePicker = createDatePicker({
+    popoverId: '#card-date-popover',
+    titleId: '#card-date-title',
+    gridId: '#card-date-grid',
+    prevId: '#card-date-prev',
+    nextId: '#card-date-next',
+    floating: true,
+    onChange: async iso => {
+      const task = cardDateTask;
+      cardDateTask = null;
+      if (!task || !iso) return;
+      try {
+        const updated = await api('PATCH', `${API}/${task.id}`, { dueDate: iso });
+        Object.assign(task, updated);
+        render();
+        showSaveSuccess();
+      } catch {
+        showSaveError();
+      }
+    },
+  });
+}
+
+function setupCloud() {
+  const cloud = window.DecisiveCloud;
+  const block = $('#cloud-block');
+  if (!block || !cloud || !cloud.configured) return;
+  block.hidden = false;
+  const status = $('#cloud-status');
+  const signInButton = $('#cloud-signin');
+  const signOutButton = $('#cloud-signout');
+  const renderCloudState = () => {
+    const session = cloud.getSession();
+    if (status) status.textContent = session ? `Cloud: signed in as ${session.email || 'your account'}` : 'Cloud: signed out';
+    if (signInButton) signInButton.hidden = Boolean(session);
+    if (signOutButton) signOutButton.hidden = !session;
+  };
+  cloud.onChange(() => { renderCloudState(); void load(); });
+  renderCloudState();
+  if (window.__decisiveCloudError) setStatus(`Sign-in failed: ${window.__decisiveCloudError}`, 'error');
+  signInButton?.addEventListener('click', () => {
+    void cloud.signInWithGoogle().catch(error => setStatus(String(error.message || error), 'error'));
+  });
+  signOutButton?.addEventListener('click', () => { void cloud.signOut(); });
 }
 
 function setView(view) {
@@ -2539,6 +2691,8 @@ setupEliminateRecovery();
 setupSettings();
 setupCalendar();
 setupMatrixCapture();
+setupCardDatePicker();
+setupCloud();
 const initialView = new URLSearchParams(location.search).get('view');
 setView(['scatter', 'archive', 'calendar'].includes(initialView) ? initialView : 'matrix');
 

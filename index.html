@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisive</title>
 <script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=45">
 </head>
 <body>
 <div id="phone-shell">
@@ -47,6 +47,19 @@
         </button>
         <p class="settings-help settings-demo-help">Replaces this board with the built-in demo examples. Current tasks will be removed.</p>
         <p class="settings-help">Turn off the background to reduce motion and processing.</p>
+        <div class="settings-divider" aria-hidden="true"></div>
+        <div class="settings-cloud" id="cloud-block" hidden>
+          <p class="settings-cloud-status" id="cloud-status">Cloud: signed out</p>
+          <button type="button" class="settings-action" id="cloud-signin">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v9h9"/></svg>
+            <span>Sign in with Google</span>
+          </button>
+          <button type="button" class="settings-action" id="cloud-signout" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h4v16h-4M11 8l-4 4 4 4M7 12h9"/></svg>
+            <span>Sign out</span>
+          </button>
+          <p class="settings-help">Keeps your board in your own free Supabase account so it follows you across devices. Local mode stays the default until you sign in.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -183,6 +196,19 @@
     <div class="calendar-day-popover-list" id="calendar-day-popover-list" role="list"></div>
   </div>
 </section>
+<div class="calendar-date-popover card-date-popover" id="card-date-popover" role="dialog" aria-label="Change task date" hidden>
+  <div class="date-popover-head">
+    <button type="button" class="date-popover-nav" id="card-date-prev" aria-label="Previous month">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+    </button>
+    <span class="date-popover-title" id="card-date-title">—</span>
+    <button type="button" class="date-popover-nav" id="card-date-next" aria-label="Next month">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+    </button>
+  </div>
+  <div class="date-popover-weekdays" aria-hidden="true"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+  <div class="date-popover-grid" id="card-date-grid" role="grid" aria-label="Days"></div>
+</div>
 <section id="archive-view" class="archive-view" aria-labelledby="archive-title" hidden>
   <div class="archive-heading">
     <div>
@@ -204,7 +230,9 @@
 </div>
 </div>
 <script type="module" src="ascii-background.js?v=2"></script>
-<script src="app.js?v=36"></script>
+<script src="cloud-config.js?v=1"></script>
+<script src="cloud.js?v=1"></script>
+<script src="app.js?v=39"></script>
 <script src="metal-shader.js?v=1"></script>
 </body>
 </html>

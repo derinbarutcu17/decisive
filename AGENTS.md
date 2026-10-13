@@ -16,6 +16,15 @@
   `pre-restore` snapshots before any demo reset. Never delete task history or
   backups; archive instead of removing.
 
+## Cloud mode (accounts)
+
+- `cloud-config.js` + `cloud.js` add optional Supabase accounts (Google
+  sign-in, Row Level Security). A signed-in session takes precedence inside
+  `api()`; unconfigured or signed-out keeps the app local-first.
+- Setup lives in `docs/cloud-setup.md` and `docs/cloud-schema.sql`. The anon
+  key is a public browser key and is safe to commit.
+- Never put a Supabase service-role key in this repo or the frontend.
+
 ## Delegation
 
 - Delegate broadly for non-trivial work whenever subagent capacity is available; do not impose an arbitrary project-local numeric cap.

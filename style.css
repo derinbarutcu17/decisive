@@ -1425,6 +1425,8 @@ button, input, textarea, select { font: inherit; }
   gap: 4px;
   margin-left: 6px;
   margin-right: -4px;
+  min-width: 60px;
+  justify-content: flex-end;
   opacity: 0;
   pointer-events: auto;
   transition: opacity .15s;
@@ -2518,21 +2520,39 @@ html.iphone-preview .card-actions svg { width: 16px; height: 16px; }
   opacity: 1;
 }
 
-/* Card due chip: a quiet, always-visible date marker that sits immediately
-   left of the card action buttons (eliminate / delete). */
+/* Card due chip: a date marker resting over the action-button slot. On hover
+   the action buttons fade in and the chip slides left of them; a hairline
+   divider travels with it. Click the chip to change the date. */
 .card-due {
+  position: absolute;
+  top: 50%;
+  right: 14px;
   flex: none;
-  margin-left: 6px;
-  padding: 1px 7px;
+  padding: 1px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted);
+  background: var(--surface);
+  font: inherit;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .02em;
   white-space: nowrap;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: transform .18s ease, color .18s ease, border-color .18s ease;
 }
-.card.done .card-due { opacity: .6; }
+.card-due:hover,
+.card-due:focus-visible {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  outline: none;
+}
+.card:is(:hover, :focus-within) .card-due { transform: translate(-64px, -50%); }
+.card.done .card-due { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .card-due { transition: color .18s ease, border-color .18s ease; }
+}
 .calendar-board {
   display: flex;
   flex: 1 1 auto;
@@ -2617,6 +2637,12 @@ html.iphone-preview .card-actions svg { width: 16px; height: 16px; }
   background: rgba(255, 255, 255, .05);
   font-size: 11px;
   line-height: 1.3;
+}
+.calendar-task[draggable="true"] { cursor: grab; }
+.calendar-task.is-dragging { opacity: .45; }
+.calendar-day.is-drop-target {
+  background: rgba(255, 89, 8, .07);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 .calendar-task-bar {
   flex: none;
@@ -2721,6 +2747,22 @@ html.iphone-preview .card-actions svg { width: 16px; height: 16px; }
 .calendar-day-popover-list .card[data-quadrant="schedule"] { --q: var(--schedule-color); --q-soft: #102b27; }
 .calendar-day-popover-list .card[data-quadrant="delegate"] { --q: var(--delegate-color); --q-soft: #30250e; }
 .calendar-day-popover-list .card[data-quadrant="eliminate"] { --q: var(--eliminate-color); --q-soft: var(--eliminate-soft); }
+.card-date-popover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: auto;
+  z-index: 60;
+}
+
+/* Cloud account block in the settings panel. */
+.settings-cloud-status {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.settings-cloud .settings-action + .settings-action { margin-top: 6px; }
+.settings-cloud .settings-action[hidden] { display: none; }
 .calendar-more {
   padding: 2px 6px;
   color: var(--muted);

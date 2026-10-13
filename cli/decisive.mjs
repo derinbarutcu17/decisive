@@ -21,9 +21,12 @@ const QUADRANT_LABELS = {
   eliminate: 'ELIMINATE (neither)',
 };
 
+let VERBOSE = false;
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function api(method, route, body) {
+  if (VERBOSE) console.error(`[verbose] ${method} ${API}${route}`);
   const response = await fetch(API + route, {
     method,
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -192,6 +195,7 @@ Usage:
 
 Notes:
   - <id> accepts any unique prefix of the task id; ids come from "decisive list".
+  - --verbose prints each HTTP request URL to stderr (stdout stays machine-readable).
   - list shows active tasks by default; --all includes done and archived.
   - The CLI talks to the running app (127.0.0.1:4321). If the app is closed it
     starts a headless server with the same data file, so agents always work.
@@ -207,8 +211,11 @@ Examples:
 
 async function main() {
   const argv = process.argv.slice(2);
-  const command = argv[0];
-  const { positional, flags } = parseArgs(argv.slice(1));
+  const commandIndex = argv.findIndex(arg => !arg.startsWith('-'));
+  const command = commandIndex === -1 ? '' : argv[commandIndex];
+  const rest = argv.filter((_, index) => index !== commandIndex);
+  const { positional, flags } = parseArgs(rest);
+  VERBOSE = flags.verbose === true;
 
   if (!command || command === 'help' || flags.help === true) {
     console.log(HELP.trimEnd());
