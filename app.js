@@ -52,7 +52,7 @@ let asciiBackgroundEnabled = true;
 let scatterNamesVisible = false;
 let metalEffectEnabled = true;
 let originalLayoutEnabled = false;
-let eliminateRecovery = null;
+let quadrantUndo = null;
 let calendarMonth = null;
 let calendarPicker = null;
 let matrixPicker = null;
@@ -333,60 +333,77 @@ function syncEliminateRail() {
   const populated = cardsFor('eliminate').length > 0;
   section.classList.toggle('is-populated', populated);
   section.classList.toggle('is-empty', !populated);
-  section.classList.toggle('has-recovery', Boolean(eliminateRecovery));
 }
 
-function showEliminateRecovery(taskId, previous) {
-  eliminateRecovery = {
-    taskId: String(taskId),
-    previousDone: Boolean(previous.done),
-    previousQuadrant: previous.quadrant,
-    previousOrder: Number.isFinite(Number(previous.order)) ? Number(previous.order) : 0,
+// Moving a task between quadrants (or completing it) leaves a five second
+// Undo next to the destination quadrant's count. One move has at most one
+// pending undo; a new move replaces it.
+const QUADRANT_UNDO_MS = 5000;
+
+function quadrantHeaderFor(quadrant) {
+  if (quadrant === 'done') return $('#done h2');
+  if (quadrant === 'eliminate') return document.querySelector('.quadrant[data-quadrant="eliminate"] h2');
+  return document.querySelector(`#matrix .quadrant[data-quadrant="${quadrant}"] h2`);
+}
+
+function showQuadrantUndo(destinationQuadrant, record) {
+  clearQuadrantUndo();
+  const header = quadrantHeaderFor(destinationQuadrant);
+  const holder = header?.querySelector('.quadrant-undo');
+  if (!holder || !header.offsetParent) return;
+  quadrantUndo = {
+    taskId: String(record.taskId),
+    body: record.body,
+    timerId: window.setTimeout(() => clearQuadrantUndo(), QUADRANT_UNDO_MS),
   };
-  const panel = $('#eliminate-recovery');
-  if (!panel) return;
-  panel.querySelector('.eliminate-recovery-message').textContent = 'Moved to Eliminate';
-  const undo = panel.querySelector('.eliminate-undo');
-  undo.disabled = false;
-  panel.hidden = false;
-  syncEliminateRail();
+  holder.hidden = false;
 }
 
-function clearEliminateRecovery() {
-  eliminateRecovery = null;
-  const panel = $('#eliminate-recovery');
-  if (panel) panel.hidden = true;
-  syncEliminateRail();
+function clearQuadrantUndo() {
+  if (quadrantUndo) window.clearTimeout(quadrantUndo.timerId);
+  quadrantUndo = null;
+  document.querySelectorAll('.quadrant-undo').forEach(holder => { holder.hidden = true; });
 }
 
-async function undoEliminate() {
-  const recovery = eliminateRecovery;
-  if (!recovery) return;
-  const button = $('#eliminate-recovery .eliminate-undo');
-  if (button?.disabled) return;
-  if (button) button.disabled = true;
-  const body = recovery.previousDone
-    ? { done: true, quadrant: recovery.previousQuadrant }
-    : { done: false, quadrant: recovery.previousQuadrant, order: recovery.previousOrder };
+function clearQuadrantUndoIfTask(taskId) {
+  if (quadrantUndo && quadrantUndo.taskId === String(taskId)) clearQuadrantUndo();
+}
+
+async function undoQuadrantMove() {
+  const record = quadrantUndo;
+  if (!record) return;
+  clearQuadrantUndo();
+  const task = tasks.find(item => String(item.id) === record.taskId);
+  if (!task) return;
   try {
-    const updated = await api('PATCH', `${API}/${recovery.taskId}`, body);
-    const task = tasks.find(item => String(item.id) === recovery.taskId);
-    if (task) Object.assign(task, updated);
-    clearEliminateRecovery();
+    const updated = await api('PATCH', `${API}/${task.id}`, record.body);
+    Object.assign(task, updated);
     render();
-    const restored = cardIn(recovery.taskId);
+    const restored = cardIn(task.id);
     if (restored) settleCard(restored);
     showSaveSuccess();
   } catch {
-    if (button) button.disabled = false;
     showSaveError();
   }
 }
 
-function setupEliminateRecovery() {
-  $('.eliminate-undo')?.addEventListener('click', event => {
-    event.stopPropagation();
-    void undoEliminate();
+function setupQuadrantUndo() {
+  document.querySelectorAll('.quadrant h2').forEach(header => {
+    if (header.querySelector('.quadrant-undo')) return;
+    const holder = document.createElement('span');
+    holder.className = 'quadrant-undo';
+    holder.hidden = true;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'quadrant-undo-button';
+    button.textContent = 'Undo';
+    button.setAttribute('aria-label', 'Undo the last move');
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      void undoQuadrantMove();
+    });
+    holder.appendChild(button);
+    header.appendChild(holder);
   });
 }
 
@@ -1490,7 +1507,7 @@ async function deleteTask(li, t, { permanent = false } = {}) {
   catch { showSaveError(); return false; }
   if (permanent || t.archived) tasks = tasks.filter(x => x.id !== t.id);
   else Object.assign(t, updated);
-  if (eliminateRecovery?.taskId === String(t.id)) clearEliminateRecovery();
+  clearQuadrantUndoIfTask(t.id);
   li.remove();
   refreshEmpty(ul);
   updateCounts();
@@ -1707,7 +1724,10 @@ async function moveTaskToEliminate(li, t) {
     });
     Object.assign(t, updated);
     render();
-    showEliminateRecovery(t.id, previous);
+    showQuadrantUndo('eliminate', {
+      taskId: t.id,
+      body: { quadrant: previous.quadrant, order: previous.order },
+    });
     const moved = cardIn(t.id);
     if (moved) settleCard(moved);
     showSaveSuccess();
@@ -1758,7 +1778,10 @@ async function toggleDone(li, t) {
         task.archivedAt = task.archivedAt || new Date().toISOString();
       }
     });
-    if (target && eliminateRecovery?.taskId === String(t.id)) clearEliminateRecovery();
+    showQuadrantUndo(target ? 'done' : t.quadrant, {
+      taskId: t.id,
+      body: target ? { done: false } : { done: true },
+    });
     const from = li.parentElement;
     const to = target ? $('#done .cards') : document.querySelector(`.quadrant[data-quadrant="${t.quadrant}"] .cards`);
     li.classList.toggle('done', target);
@@ -2154,10 +2177,16 @@ for (const ul of [...document.querySelectorAll('.quadrant .cards')]) {
     renderScatter();
     settleCard(li);
     li._dragSource = null;
-    if (!isDone && section.dataset.quadrant === 'eliminate' && previous.quadrant !== 'eliminate') {
-      showEliminateRecovery(t.id, previous);
-    } else if (!isDone && previous.quadrant === 'eliminate' && section.dataset.quadrant !== 'eliminate') {
-      clearEliminateRecovery();
+    const destination = isDone ? 'done' : section.dataset.quadrant;
+    if (isDone && !previous.done) {
+      showQuadrantUndo('done', { taskId: t.id, body: { done: false } });
+    } else if (!isDone && previous.quadrant !== destination) {
+      showQuadrantUndo(destination, {
+        taskId: t.id,
+        body: previous.done
+          ? { done: true, quadrant: previous.quadrant }
+          : { done: false, quadrant: previous.quadrant, order: previous.order },
+      });
     }
     showSaveSuccess();
   });
@@ -2248,7 +2277,10 @@ async function completeFromCalendarPopover(card, t) {
         task.archivedAt = task.archivedAt || new Date().toISOString();
       }
     });
-    if (target && eliminateRecovery?.taskId === String(t.id)) clearEliminateRecovery();
+    showQuadrantUndo(target ? 'done' : t.quadrant, {
+      taskId: t.id,
+      body: target ? { done: false } : { done: true },
+    });
     // render() refreshes the calendar grid and re-syncs the open day popup;
     // a completed task leaves the calendar surface, so its row disappears.
     render();
@@ -2718,7 +2750,7 @@ document.querySelectorAll('.view-button').forEach(button => {
 });
 setupDoneDeleteActions();
 setupArchiveDeleteActions();
-setupEliminateRecovery();
+setupQuadrantUndo();
 setupSettings();
 setupCalendar();
 setupMatrixCapture();
