@@ -252,7 +252,7 @@ async function load() {
 
 function cardsFor(q) { return tasks.filter(t => t.quadrant === q && !t.done && !t.archived).sort((a, b) => a.order - b.order); }
 function doneItems() { return tasks.filter(t => t.done && !t.archived).sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || '')); }
-function archiveItems() { return tasks.filter(t => t.done && t.archived).sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || '')); }
+function archiveItems() { return tasks.filter(t => t.done && t.archived).sort((a, b) => (b.archivedAt || b.doneAt || '').localeCompare(a.archivedAt || a.doneAt || '')); }
 
 function snapWeight(value) {
   return GRID_VALUES.reduce((closest, point) => Math.abs(point - value) < Math.abs(closest - value) ? point : closest, GRID_VALUES[0]);
@@ -1718,6 +1718,32 @@ async function moveTaskToEliminate(li, t) {
   }
 }
 
+// Cards are reused in place when tasks change state, so the Eliminate action
+// must follow the task: gone once it is done (or already eliminated), back
+// again when it returns to an active quadrant. Leaving it behind stole a
+// whole button's width from the title on every completed card.
+function syncCardActions(li, t) {
+  const actions = li.querySelector('.card-actions');
+  if (!actions) return;
+  const shouldEliminate = !t.done && t.quadrant !== 'eliminate';
+  const existing = actions.querySelector('.eliminate-task');
+  if (shouldEliminate && !existing) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'eliminate-task';
+    button.setAttribute('aria-label', 'Move task to Eliminate');
+    button.title = 'Move to Eliminate';
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg>';
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      void moveTaskToEliminate(li, t);
+    });
+    actions.insertBefore(button, actions.firstChild);
+  } else if (!shouldEliminate && existing) {
+    existing.remove();
+  }
+}
+
 async function toggleDone(li, t) {
   if (li.dataset.busy === 'true') return;
   li.dataset.busy = 'true';
@@ -1736,11 +1762,16 @@ async function toggleDone(li, t) {
     const from = li.parentElement;
     const to = target ? $('#done .cards') : document.querySelector(`.quadrant[data-quadrant="${t.quadrant}"] .cards`);
     li.classList.toggle('done', target);
+    syncCardActions(li, t);
     setCheckState(li, t, { animate: true });
     li.querySelector('.content').innerHTML = cardBodyHtml(t);
     fillBody(li, t);
     setContentLabel(li, t);
-    to.appendChild(li);
+    // Completed work lands on TOP of Done (and the archive list keeps the
+    // same newest-first order), never at the bottom.
+    const firstCard = target ? to.querySelector('.card') : null;
+    if (firstCard) to.insertBefore(li, firstCard);
+    else to.appendChild(li);
     refreshEmpty(from); refreshEmpty(to);
     updateCounts();
     renderScatter();

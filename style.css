@@ -516,7 +516,7 @@ button, input, textarea, select { font: inherit; }
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-columns: minmax(230px, .45fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(250px, .45fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;
@@ -539,7 +539,7 @@ button, input, textarea, select { font: inherit; }
 #matrix > .quadrant[data-quadrant="schedule"] { grid-column: 3; grid-row: 1; }
 #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 3; grid-row: 2; }
 #layout.original-layout {
-  grid-template-columns: minmax(230px, .45fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(250px, .45fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
   grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 #layout.original-layout #done { grid-column: 1; grid-row: 1 / -1; }
@@ -1418,6 +1418,9 @@ button, input, textarea, select { font: inherit; }
 .card .check:hover { background: var(--q-soft); }
 .card .check:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .card.done .check { border-color: var(--line-strong); background: var(--line-strong); }
+/* Done cards only carry the archive button, so they need far less action
+   reserve: the freed space keeps titles on one line much longer. */
+.card.done .card-actions { min-width: 28px; }
 .card-actions {
   display: flex;
   flex: none;
@@ -1501,6 +1504,7 @@ button, input, textarea, select { font: inherit; }
 .done-section .card.done {
   min-height: 72px;
   padding-block: 9px;
+  gap: 8px;
 }
 .done-section .card.done .content {
   min-width: 0;
