@@ -59,6 +59,10 @@ let matrixPicker = null;
 let calendarDayPopoverDate = '';
 let calendarDraggedTaskId = null;
 let calendarDropCell = null;
+// The live local date; rechecked on focus, wake, and once a minute so an app
+// left running across midnight rolls every "today" forward on its own.
+let lastKnownToday = '';
+let todayTicker = 0;
 
 function clearCalendarDropTarget() {
   calendarDropCell?.classList.remove('is-drop-target');
@@ -2246,7 +2250,9 @@ function openCalendarDayPopover(iso) {
   list.textContent = '';
   items.forEach(t => {
     const card = cardEl(t, { readOnly: true });
-    card.draggable = false;
+    // Rows drag out of the popup and drop onto any other calendar day.
+    card.draggable = true;
+    card.classList.add('calendar-popover-card');
     card.dataset.quadrant = t.quadrant;
     const check = card.querySelector('.check');
     if (check) {
@@ -2413,6 +2419,12 @@ function createDatePicker({ buttonId = '', labelId = '', popoverId, titleId, gri
     renderLabel();
     if (!silent && onChange) onChange(picked);
   }
+  // Quick-add default dates must follow the calendar: a default frozen on the
+  // day the app launched would silently date new tasks in the past.
+  function resetToToday() {
+    picked = toISODate(new Date());
+    renderLabel();
+  }
 
   button?.addEventListener('click', () => { if (popover?.hidden) open(); else close(); });
   $(prevId)?.addEventListener('click', () => { month = shiftMonth(month, -1); renderPopover(); });
@@ -2437,7 +2449,7 @@ function createDatePicker({ buttonId = '', labelId = '', popoverId, titleId, gri
   });
 
   renderLabel();
-  return { open, close, pick, set, get: () => picked };
+  return { open, close, pick, set, resetToToday, get: () => picked };
 }
 
 function renderCalendar() {
@@ -2582,6 +2594,24 @@ function setupCalendar() {
   });
 
   const dayPopover = $('#calendar-day-popover');
+  // Rows inside the day popup drag onto other calendar days the same way the
+  // grid chips do: pick the row up, drop it on any day cell.
+  dayPopover?.addEventListener('dragstart', e => {
+    const row = e.target.closest('.card');
+    if (!row?.dataset.id) return;
+    e.stopPropagation();
+    calendarDraggedTaskId = String(row.dataset.id);
+    row.classList.add('is-dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', calendarDraggedTaskId);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  });
+  dayPopover?.addEventListener('dragend', e => {
+    e.target.closest?.('.card')?.classList.remove('is-dragging');
+    clearCalendarDropTarget();
+    calendarDraggedTaskId = null;
+  });
   $('#calendar-day-popover-close')?.addEventListener('click', () => closeCalendarDayPopover());
   window.addEventListener('resize', () => {
     if (!calendarDayPopoverDate) return;
@@ -2756,6 +2786,36 @@ setupCalendar();
 setupMatrixCapture();
 setupCardDatePicker();
 setupCloud();
+
+// "Today" must update itself: the app can sit open (or asleep) for days, and a
+// grid or quick-add default frozen on launch day would date new tasks in the
+// past. A timer fires just after each midnight; focus and visibility checks
+// cover waking a sleeping laptop, and a minute interval is the safety net.
+let lastTodayISO = toISODate(new Date());
+let todayWatchTimer = 0;
+
+function todayHasRolled() {
+  const now = toISODate(new Date());
+  if (now === lastTodayISO) return;
+  lastTodayISO = now;
+  calendarMonth = startOfMonth(new Date());
+  calendarPicker?.resetToToday?.();
+  matrixPicker?.resetToToday?.();
+  render();
+}
+
+function scheduleTodayWatch() {
+  if (todayWatchTimer) window.clearTimeout(todayWatchTimer);
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 30);
+  todayWatchTimer = window.setTimeout(() => { todayHasRolled(); scheduleTodayWatch(); }, Math.max(15000, nextMidnight - now));
+}
+
+scheduleTodayWatch();
+window.setInterval(todayHasRolled, 60000);
+window.addEventListener('focus', todayHasRolled);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) todayHasRolled(); });
+
 const initialView = new URLSearchParams(location.search).get('view');
 setView(['scatter', 'archive', 'calendar'].includes(initialView) ? initialView : 'matrix');
 

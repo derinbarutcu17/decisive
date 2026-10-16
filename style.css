@@ -2792,3 +2792,7 @@ html.iphone-preview .card-actions svg { width: 16px; height: 16px; }
   line-height: 1.3;
   text-overflow: ellipsis;
 }
+
+/* Day-overlay rows drag onto other days, like the grid chips. */
+.calendar-day-popover-list .card { cursor: grab; }
+.calendar-day-popover .card.is-dragging { opacity: .45; }
