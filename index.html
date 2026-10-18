@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Decisive</title>
 <script>if (new URLSearchParams(location.search).get('iphone') === '1') document.documentElement.classList.add('iphone-preview');</script>
-<link rel="stylesheet" href="style.css?v=48">
+<link rel="stylesheet" href="style.css?v=49">
 </head>
 <body>
 <div id="phone-shell">
@@ -40,6 +40,11 @@
           <span>Original layout</span>
           <input id="original-layout-toggle" type="checkbox" role="switch">
         </label>
+        <label class="settings-option" for="eliminate-quadrant-toggle">
+          <span>Show Eliminate quadrant</span>
+          <input id="eliminate-quadrant-toggle" type="checkbox" role="switch" checked>
+        </label>
+        <p class="settings-help settings-eliminate-help">Turn it off to close the Eliminate panel. Its tasks stay saved.</p>
         <div class="settings-divider" aria-hidden="true"></div>
         <button type="button" class="settings-action" id="restore-demo-content">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v12H4zM3 4.5h18v3H3zM9 12h6"/></svg>
@@ -228,7 +233,7 @@
 <script type="module" src="ascii-background.js?v=2"></script>
 <script src="cloud-config.js?v=1"></script>
 <script src="cloud.js?v=1"></script>
-<script src="app.js?v=42"></script>
+<script src="app.js?v=43"></script>
 <script src="metal-shader.js?v=1"></script>
 </body>
 </html>

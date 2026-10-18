@@ -1,10 +1,24 @@
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+const findPort = () => new Promise((resolve, reject) => {
+  const probe = createServer();
+  probe.once('error', reject);
+  probe.listen(0, '127.0.0.1', () => {
+    const address = probe.address();
+    if (!address || typeof address === 'string') {
+      probe.close(() => reject(new Error('could not allocate a test port')));
+      return;
+    }
+    probe.close(error => error ? reject(error) : resolve(address.port));
+  });
+});
+
 const dir = await mkdtemp(path.join(tmpdir(), 'eisenhower-'));
-const port = 4322;
+const port = await findPort();
 const dataFile = path.join(dir, 'data.json');
 const oldDone = {
   id: 'expired-done',

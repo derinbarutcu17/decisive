@@ -52,6 +52,7 @@ let asciiBackgroundEnabled = true;
 let scatterNamesVisible = false;
 let metalEffectEnabled = true;
 let originalLayoutEnabled = false;
+let eliminateQuadrantVisible = true;
 let quadrantUndo = null;
 let calendarMonth = null;
 let calendarPicker = null;
@@ -96,6 +97,7 @@ try {
   scatterNamesVisible = localStorage.getItem('decisive.scatterNamesVisible') === 'true';
   metalEffectEnabled = localStorage.getItem('decisive.metalEffectEnabled') !== 'false';
   originalLayoutEnabled = localStorage.getItem('decisive.originalLayoutEnabled') === 'true';
+  eliminateQuadrantVisible = localStorage.getItem('decisive.eliminateQuadrantVisible') !== 'false';
 } catch {}
 
 const $ = sel => document.querySelector(sel);
@@ -2032,6 +2034,13 @@ function setOriginalLayoutEnabled(enabled) {
   try { localStorage.setItem('decisive.originalLayoutEnabled', String(originalLayoutEnabled)); } catch {}
 }
 
+function setEliminateQuadrantVisible(visible) {
+  eliminateQuadrantVisible = Boolean(visible);
+  $('#layout')?.classList.toggle('hide-eliminate-quadrant', !eliminateQuadrantVisible);
+  syncSettingsToggle($('#eliminate-quadrant-toggle'), eliminateQuadrantVisible, true);
+  try { localStorage.setItem('decisive.eliminateQuadrantVisible', String(eliminateQuadrantVisible)); } catch {}
+}
+
 function setScatterNamesVisible(visible) {
   scatterNamesVisible = Boolean(visible);
   try { localStorage.setItem('decisive.scatterNamesVisible', String(scatterNamesVisible)); } catch {}
@@ -2085,6 +2094,7 @@ function setupSettings() {
   const panel = $('#settings-panel');
   const backgroundToggle = $('#ascii-background-toggle');
   const originalLayoutToggle = $('#original-layout-toggle');
+  const eliminateQuadrantToggle = $('#eliminate-quadrant-toggle');
   const namesButton = $('#scatter-names-button');
   const restoreDemoButton = $('#restore-demo-content');
   if (!toggle || !panel || !backgroundToggle) return;
@@ -2094,7 +2104,12 @@ function setupSettings() {
     originalLayoutToggle.checked = originalLayoutEnabled;
     syncSettingsToggle(originalLayoutToggle, originalLayoutEnabled);
   }
+  if (eliminateQuadrantToggle) {
+    eliminateQuadrantToggle.checked = eliminateQuadrantVisible;
+    syncSettingsToggle(eliminateQuadrantToggle, eliminateQuadrantVisible);
+  }
   setOriginalLayoutEnabled(originalLayoutEnabled);
+  setEliminateQuadrantVisible(eliminateQuadrantVisible);
   setScatterNamesVisible(scatterNamesVisible);
   toggle.addEventListener('click', event => {
     event.stopPropagation();
@@ -2103,6 +2118,7 @@ function setupSettings() {
   panel.addEventListener('click', event => event.stopPropagation());
   backgroundToggle.addEventListener('change', () => setAsciiBackgroundEnabled(backgroundToggle.checked));
   originalLayoutToggle?.addEventListener('change', () => setOriginalLayoutEnabled(originalLayoutToggle.checked));
+  eliminateQuadrantToggle?.addEventListener('change', () => setEliminateQuadrantVisible(eliminateQuadrantToggle.checked));
   namesButton?.addEventListener('click', () => setScatterNamesVisible(!scatterNamesVisible));
   restoreDemoButton?.addEventListener('click', () => void restoreDemoContent());
   document.addEventListener('click', event => {

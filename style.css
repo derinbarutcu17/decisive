@@ -413,6 +413,7 @@ button, input, textarea, select { font: inherit; }
   line-height: 1.4;
 }
 .settings-demo-help { margin-top: 4px; }
+.settings-eliminate-help { margin: 6px 0 0; }
 
 .app-status {
   min-height: 16px;
@@ -529,6 +530,8 @@ button, input, textarea, select { font: inherit; }
   min-width: 0;
 }
 #done { grid-column: 1; grid-row: 1; }
+#layout.hide-eliminate-quadrant > .eliminate-section { display: none !important; }
+#layout.hide-eliminate-quadrant:not(.original-layout) #done { grid-row: 1 / -1; }
 .eliminate-section {
   grid-column: 1;
   grid-row: 2;
@@ -546,6 +549,7 @@ button, input, textarea, select { font: inherit; }
 #layout.original-layout #matrix > .quadrant[data-quadrant="do"] { grid-column: 2; grid-row: 1; }
 #layout.original-layout #matrix > .quadrant[data-quadrant="schedule"] { grid-column: 3; grid-row: 1; }
 #layout.original-layout #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 2; grid-row: 2; }
+#layout.original-layout.hide-eliminate-quadrant #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 2 / -1; }
 #layout.original-layout .eliminate-section {
   grid-column: 3;
   grid-row: 2;
@@ -1636,6 +1640,7 @@ button, input, textarea, select { font: inherit; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="do"] { grid-column: 1; grid-row: 1; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="schedule"] { grid-column: 2; grid-row: 1; }
   #layout.original-layout #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 1; grid-row: 2; }
+  #layout.hide-eliminate-quadrant #matrix > .quadrant[data-quadrant="delegate"] { grid-column: 1 / -1; }
   #layout.original-layout #done {
     grid-column: 1 / -1;
     grid-row: 3;

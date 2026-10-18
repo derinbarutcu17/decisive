@@ -28,6 +28,17 @@ app.whenReady().then(async () => {
       ok('matrix has four active quadrants', document.querySelectorAll('#layout .quadrant[data-quadrant]').length === 4);
       ok('done archive is present', !!document.querySelector('#done.done-section'));
 
+      const eliminateToggle = document.querySelector('#eliminate-quadrant-toggle');
+      const eliminatePanel = document.querySelector('#layout > .eliminate-section');
+      const storedEliminateCount = (await (await fetch('/api/tasks')).json()).filter(task => task.quadrant === 'eliminate').length;
+      ok('Eliminate visibility is available in Settings', !!eliminateToggle && eliminateToggle.checked && !!eliminatePanel);
+      eliminateToggle?.click();
+      await wait(80);
+      ok('Settings closes the Eliminate panel without deleting its tasks', !!eliminatePanel && getComputedStyle(eliminatePanel).display === 'none' && localStorage.getItem('decisive.eliminateQuadrantVisible') === 'false' && (await (await fetch('/api/tasks')).json()).filter(task => task.quadrant === 'eliminate').length === storedEliminateCount);
+      eliminateToggle?.click();
+      await wait(80);
+      ok('Settings reopens the Eliminate panel', !!eliminatePanel && getComputedStyle(eliminatePanel).display !== 'none' && localStorage.getItem('decisive.eliminateQuadrantVisible') === 'true');
+
       // Click-to-edit is the only task editor surface.
       card.querySelector('.content').click();
       await wait(120);
