@@ -13,6 +13,7 @@
     "app": "electron .",
     "capture:readme": "electron scripts/capture-readme-shots.cjs",
     "dist": "electron-builder --mac dir",
+    "rebuild:local": "node scripts/rebuild-local-macos.cjs",
     "release:preflight": "node scripts/release-preflight.cjs",
     "release:artifacts": "node scripts/release-preflight.cjs --artifacts"
   },

@@ -36,3 +36,10 @@
 
 - Keep the local web preview as the primary inspection surface until the user explicitly asks for a native build.
 - Favor small, purposeful state changes over decorative motion. Respect reduced-motion preferences and preserve the existing Decisive visual system.
+
+## Local macOS rebuilds
+
+- `npm run dist` only writes `dist/mac-arm64/Decisive.app`. It does not update `/Applications/Decisive.app`, and a running app keeps serving its old bundle.
+- For a local app update, inspect the running Decisive window with CUA first. If a task editor is open, save it before quitting. Quit Decisive normally, then run `npm run rebuild:local`. This command builds the unsigned app, checks for the requested UI marker, snapshots the task store, and installs the bundle into `/Applications` with rollback support. It refuses to replace a running app or a busy port.
+- The task store is `~/Library/Application Support/eisenhower/data.json`; its `backups/` folder and `~/Library/Application Support/decisive` are persistent user data. Never delete, replace, or move them during an app rebuild. Replacing the `.app` bundle does not require changing them.
+- After installation, launch `/Applications/Decisive.app` through CUA and verify the visible UI and the served page at `http://localhost:4321/` contain the new feature marker. Do not claim success from the `dist` bundle alone.
