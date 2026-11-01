@@ -45,7 +45,7 @@
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
-    "asciify-engine": "^4.19.0"
+    "asciify-engine": "^4.32.8"
   },
   "allowScripts": {
     "electron@37.10.3": true
